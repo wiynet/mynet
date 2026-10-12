@@ -1254,11 +1254,11 @@ function openFriends(start) {
       const following = [...state.following], followers = [...state.followers];
       const friends = following.filter((id) => state.followers.has(id));
       if (tab === 'friends') {
-        fillPeople(content, friends, alive, emptyBox('users', 'Пока нет друзей', 'Друзья — это те, на кого подписан ты и кто подписан на тебя.', h('button', { class: 'pill sm', type: 'button', onclick: () => pick('search') }, icon('search'), 'Найти людей')));
+        fillPeople(content, friends, alive, emptyBox('users', 'Пока нет друзей', 'Друзья — это те, на кого подписан ты и кто подписан на тебя.', h('button', { class: 'pill sm', type: 'button', onclick: () => pick('search'), html: icon('search') }, 'Найти людей')));
       } else if (tab === 'followers') {
         fillPeople(content, followers, alive, emptyBox('users', 'Пока нет подписчиков', 'Публикуй посты, и люди начнут подписываться.'));
       } else {
-        fillPeople(content, following, alive, emptyBox('plus', 'Ты пока ни на кого не подписан', '', h('button', { class: 'pill sm', type: 'button', onclick: () => pick('search') }, icon('search'), 'Найти людей')));
+        fillPeople(content, following, alive, emptyBox('plus', 'Ты пока ни на кого не подписан', '', h('button', { class: 'pill sm', type: 'button', onclick: () => pick('search'), html: icon('search') }, 'Найти людей')));
       }
     };
     const tabsWrap = h('div');
