@@ -303,6 +303,81 @@ button.stat:hover{background:rgba(255,255,255,.08);transform:translateY(-3px);bo
 .empty .pill{margin-top:10px}
 .err{color:#fecaca;font-size:13px}
 
+/* badges, media */
+.vbadge{display:inline-flex;width:16px;height:16px;flex:none;vertical-align:-3px;margin-left:4px;animation:chipIn .5s cubic-bezier(.3,1.6,.5,1) both}
+.vbadge svg{width:100%;height:100%}
+.vbadge.big{width:22px;height:22px;margin-left:0}
+.who-n{display:flex;align-items:center;min-width:0}
+.who-nt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pf-badge{display:inline-flex}
+.chip.admin{background:rgba(124,77,255,.22);color:#d4c6ff}
+.pf-acts{display:flex;gap:8px;padding-bottom:6px;flex-wrap:wrap;justify-content:flex-end}
+.pill.blue{background:#1e8fd8;color:#fff}
+.pill.blue:hover{box-shadow:0 8px 24px -10px #1e8fd8}
+.admin-note{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:14px;background:rgba(124,77,255,.12);border:1px solid rgba(124,77,255,.3);color:#e4dcff;font-size:13.5px}
+.admin-note span{color:#b9a4ff;display:flex}
+.ava{overflow:hidden;position:relative}
+.ava img{width:100%;height:100%;object-fit:cover;display:block}
+.ava-edit{display:flex;flex-direction:column;align-items:center;gap:12px}
+.ava-busy{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5)}
+.ava-busy .spin{border-color:#fff;border-top-color:transparent}
+.spin.dark{width:14px;height:14px;border-color:var(--accent-ink);border-top-color:transparent;display:inline-block}
+.pm{margin:0 20px 16px}
+.post-head + .pm{margin-top:14px}
+.grid{display:grid;gap:4px;border-radius:16px;overflow:hidden;grid-template-columns:repeat(2,minmax(0,1fr))}
+.grid.n1{grid-template-columns:minmax(0,1fr)}
+.grid.n3 .pm-img:first-child{grid-column:1 / -1}
+.pm-img{display:block;overflow:hidden;background:rgba(255,255,255,.05);cursor:zoom-in;aspect-ratio:1/1;max-width:100%}
+.grid.n1 .pm-img{aspect-ratio:auto;max-height:520px}
+.grid.n3 .pm-img:first-child{aspect-ratio:16/9}
+.pm-img img{width:100%;height:100%;object-fit:cover;display:block;opacity:0;transform:scale(1.04);transition:opacity .5s,transform .5s}
+.grid.n1 .pm-img img{max-height:520px}
+.pm-img img.ok{opacity:1;transform:none}
+.pm-img:hover img.ok{transform:scale(1.04)}
+.vid{border-radius:16px;overflow:hidden;background:#000;border:1px solid var(--line)}
+.vid video{display:block;width:100%;max-height:520px;background:#000}
+.aud{display:flex;gap:12px;align-items:center;padding:12px;border-radius:14px;background:var(--panel-2);border:1px solid var(--line)}
+.aud-ic{width:40px;height:40px;border-radius:50%;background:#7c4dff;color:#fff;display:flex;align-items:center;justify-content:center;flex:none}
+.aud-b{min-width:0;flex:1;display:flex;flex-direction:column;gap:6px}
+.aud-b b{font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.aud audio{width:100%;height:36px}
+.fileln{display:flex;gap:12px;align-items:center;padding:12px;border-radius:14px;background:var(--panel-2);border:1px solid var(--line);transition:transform .2s,border-color .2s}
+.fileln:hover{transform:translateY(-2px);border-color:#52525b}
+.fl-ic{width:42px;height:48px;border-radius:8px;background:#1e8fd8;color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:flex-end;justify-content:center;padding-bottom:7px;flex:none}
+.fl-b{min-width:0;flex:1}
+.fl-b b{display:block;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fl-b span{font-size:12px;color:var(--muted)}
+.fl-dl{color:var(--muted);display:flex;transition:transform .3s}
+.fileln:hover .fl-dl{transform:translateY(2px);color:#fff}
+.cmp-files{display:flex;gap:8px;flex-wrap:wrap;padding-left:56px}
+.cf{position:relative;width:88px;height:88px;border-radius:14px;overflow:hidden;background:rgba(255,255,255,.06);border:1px solid var(--line);animation:chipIn .4s cubic-bezier(.3,1.6,.5,1) both}
+.cf img,.cf video{width:100%;height:100%;object-fit:cover;display:block}
+.cf-file{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:6px;color:var(--muted)}
+.cf-file span{font-size:10.5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cf-tag{position:absolute;left:6px;bottom:6px;color:#fff;display:flex;filter:drop-shadow(0 1px 2px #000)}
+.cf-tag svg.i{width:16px;height:16px}
+.cf-x{position:absolute;top:4px;right:4px;width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;display:flex;align-items:center;justify-content:center;transition:transform .2s,background .2s}
+.cf-x:hover{transform:rotate(90deg);background:var(--danger)}
+.cf-x svg.i{width:14px;height:14px}
+.composer.busy .cf{opacity:.6}
+.composer.busy .cf::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.25),transparent);background-size:200% 100%;animation:shimmer 1s linear infinite}
+.composer.drop{border-color:var(--accent);box-shadow:0 0 0 4px rgba(185,255,75,.15)}
+@media (max-width:420px){.cmp-files{padding-left:0}.cf{width:76px;height:76px}.composer-foot .ghost span{display:none}}
+.lb{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;animation:fade .25s ease both;padding:56px 16px}
+.lb.out{animation:fade .2s ease reverse forwards}
+.lb img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.lb img.z{animation:lbz .35s cubic-bezier(.2,.9,.3,1.1)}
+.lb img.r{animation:lbr .3s ease}
+.lb img.l{animation:lbl .3s ease}
+@keyframes lbz{from{transform:scale(.85);opacity:0}}
+@keyframes lbr{from{transform:translateX(60px);opacity:0}}
+@keyframes lbl{from{transform:translateX(-60px);opacity:0}}
+.lb-btn{position:absolute;width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.1);color:#fff;display:flex;align-items:center;justify-content:center;transition:background .2s,transform .2s}
+.lb-btn:hover{background:rgba(255,255,255,.22);transform:scale(1.08)}
+.lb-x{top:calc(12px + env(safe-area-inset-top,0px));right:12px}
+.lb-prev{left:12px;top:50%;margin-top:-24px}
+.lb-next{right:12px;top:50%;margin-top:-24px}
+.lb-count{position:absolute;top:calc(24px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);color:#fff;font-weight:700;font-size:14px;font-variant-numeric:tabular-nums}
 #toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#fff;color:#000;font-weight:700;font-size:13.5px;padding:10px 16px;border-radius:999px;z-index:60;max-width:calc(100% - 32px);box-shadow:0 10px 30px rgba(0,0,0,.5);display:flex;align-items:center;gap:8px}
 #toast.show{animation:toastIn .45s cubic-bezier(.3,1.5,.5,1) both}
 #toast.hide{animation:toastOut .25s ease forwards}
@@ -400,6 +475,10 @@ const logo = (size, ink) => `<svg width="${size}" height="${size}" viewBox="0 0 
 
 function avatar(p, size) {
   let x = 0; for (const ch of p.username) x = (x * 31 + ch.charCodeAt(0)) % 360;
+  if (p.avatar_path && /^[0-9a-f-]{36}\/[A-Za-z0-9._-]{1,120}$/.test(p.avatar_path)) {
+    return h('div', { class: 'ava', style: `width:${size}px;height:${size}px;background:hsl(${x} 75% 68%)`, 'aria-hidden': 'true' },
+      h('img', { src: sb.storage.from('media').getPublicUrl(p.avatar_path).data.publicUrl, alt: '', loading: 'lazy' }));
+  }
   return h('div', { class: 'ava', style: `width:${size}px;height:${size}px;font-size:${Math.round(size * .42)}px;background:hsl(${x} 75% 68%)`, 'aria-hidden': 'true' }, (p.name || p.username).trim().charAt(0));
 }
 function ago(iso) {
@@ -449,8 +528,8 @@ const store = {
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { storage: store, persistSession: true, autoRefreshToken: true } });
 
 const state = { me: null, following: new Set(), tab: 'all' };
-const P = 'id,username,name';
-const POST_SEL = `id,text,link_url,created_at,author:profiles!posts_author_id_fkey(${P}),likes(count),comments(count),reposts(count)`;
+const P = 'id,username,name,verified,avatar_path';
+const POST_SEL = `id,text,link_url,media,created_at,author:profiles!posts_author_id_fkey(${P}),likes(count),comments(count),reposts(count)`;
 
 /* ---------- sign-in screen ---------- */
 let signup = false, busy = false;
@@ -593,6 +672,163 @@ function segTabs(items, current, onPick) {
   return seg;
 }
 
+/* ---------- media, badges ---------- */
+Object.assign(ICONS, {
+  image: '<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/>',
+  file: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>',
+  down: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>',
+  music: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+  video: '<path d="m16 13 5.22 3.48a.5.5 0 0 0 .78-.42V7.94a.5.5 0 0 0-.76-.43L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/>',
+  right: '<path d="m9 18 6-6-6-6"/>',
+  shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>'
+});
+const BUCKET = 'media', MAX_FILES = 10, MAX_SIZE = 50 * 1024 * 1024;
+const PATH_RE = /^[0-9a-f-]{36}\/[A-Za-z0-9._-]{1,120}$/;
+function mediaUrl(path, dlName) {
+  return sb.storage.from(BUCKET).getPublicUrl(path, dlName ? { download: dlName } : undefined).data.publicUrl;
+}
+function kindOf(mime) {
+  mime = mime || '';
+  if (mime.startsWith('image/')) return 'image';
+  if (mime.startsWith('video/')) return 'video';
+  if (mime.startsWith('audio/')) return 'audio';
+  return 'file';
+}
+function fmtSize(n) {
+  if (n < 1024) return n + ' Б';
+  if (n < 1048576) return Math.round(n / 1024) + ' КБ';
+  return (n / 1048576).toFixed(n < 10485760 ? 1 : 0).replace('.', ',') + ' МБ';
+}
+function newPath(file) {
+  const m = /\.([A-Za-z0-9]{1,8})$/.exec(file.name || '');
+  const ext = m ? '.' + m[1].toLowerCase() : '';
+  return state.me.id + '/' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8) + ext;
+}
+async function uploadFiles(files) {
+  const done = [];
+  try {
+    for (const f of files) {
+      const path = newPath(f);
+      const r = await sb.storage.from(BUCKET).upload(path, f, { contentType: f.type || 'application/octet-stream', cacheControl: '31536000' });
+      if (r.error) throw r.error;
+      done.push({ path, kind: kindOf(f.type), name: (f.name || 'файл').slice(0, 120), size: f.size, mime: (f.type || '').slice(0, 100) });
+    }
+  } catch (e) {
+    if (done.length) await sb.storage.from(BUCKET).remove(done.map((d) => d.path));
+    throw e;
+  }
+  return done;
+}
+// own verification badge: a 16-point rosette with a check
+const BADGE_PTS = (() => {
+  const pts = [];
+  for (let i = 0; i < 32; i++) { const a = (i / 32) * Math.PI * 2, r = i % 2 ? 9.2 : 11; pts.push((12 + r * Math.cos(a)).toFixed(2) + ',' + (12 + r * Math.sin(a)).toFixed(2)); }
+  return pts.join(' ');
+})();
+function badge(p, big) {
+  if (!p || !p.verified) return null;
+  return h('span', { class: 'vbadge' + (big ? ' big' : ''), title: 'Подтверждённый аккаунт', role: 'img', 'aria-label': 'Подтверждённый аккаунт',
+    html: `<svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="${BADGE_PTS}" fill="#1e8fd8" stroke="#1e8fd8" stroke-width="1.6" stroke-linejoin="round"/><path d="m7.8 12.3 2.8 2.8 5.6-5.8" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>` });
+}
+function mediaBlock(media) {
+  const items = (Array.isArray(media) ? media : []).filter((m) => m && typeof m.path === 'string' && PATH_RE.test(m.path));
+  if (!items.length) return [];
+  const out = [];
+  const imgs = items.filter((m) => m.kind === 'image');
+  if (imgs.length) {
+    const grid = h('div', { class: 'pm grid n' + Math.min(imgs.length, 4) });
+    imgs.forEach((m, i) => {
+      const img = h('img', { src: mediaUrl(m.path), alt: m.name || 'Фото', loading: 'lazy' });
+      img.addEventListener('load', () => img.classList.add('ok'));
+      grid.append(h('button', { type: 'button', class: 'pm-img', 'aria-label': 'Открыть фото ' + (i + 1), onclick: () => lightbox(imgs, i) }, img));
+    });
+    out.push(grid);
+  }
+  for (const m of items) {
+    if (m.kind === 'video') out.push(h('div', { class: 'pm vid' }, h('video', { src: mediaUrl(m.path), controls: true, playsinline: true, preload: 'metadata' })));
+    else if (m.kind === 'audio') out.push(h('div', { class: 'pm aud' }, h('span', { class: 'aud-ic', html: icon('music') }), h('div', { class: 'aud-b' }, h('b', null, m.name || 'Аудио'), h('audio', { src: mediaUrl(m.path), controls: true, preload: 'none' }))));
+    else if (m.kind === 'file') {
+      const ext = (/\.([a-z0-9]{1,8})$/i.exec(m.name || '') || [, 'файл'])[1].toUpperCase();
+      out.push(h('a', { class: 'pm fileln', href: mediaUrl(m.path, m.name || 'file'), target: '_blank', rel: 'noopener' },
+        h('span', { class: 'fl-ic' }, ext.slice(0, 4)),
+        h('div', { class: 'fl-b' }, h('b', null, m.name || 'Файл'), h('span', null, fmtSize(m.size || 0))),
+        h('span', { class: 'fl-dl', html: icon('down') })));
+    }
+  }
+  return out;
+}
+function lightbox(imgs, start) {
+  let i = start;
+  const img = h('img', { alt: '' });
+  const counter = h('div', { class: 'lb-count' });
+  const show = (dir) => {
+    img.src = mediaUrl(imgs[i].path); img.alt = imgs[i].name || 'Фото';
+    counter.textContent = imgs.length > 1 ? (i + 1) + ' / ' + imgs.length : '';
+    img.classList.remove('l', 'r', 'z'); void img.offsetWidth; img.classList.add(dir || 'z');
+  };
+  const go = (d) => { if (imgs.length < 2) return; i = (i + d + imgs.length) % imgs.length; show(d > 0 ? 'r' : 'l'); };
+  const close = () => { lb.classList.add('out'); document.removeEventListener('keydown', key, true); setTimeout(() => lb.remove(), 220); };
+  const key = (e) => {
+    if (e.key === 'Escape') { e.stopImmediatePropagation(); close(); }
+    else if (e.key === 'ArrowRight') go(1); else if (e.key === 'ArrowLeft') go(-1);
+  };
+  const nav = (d, ic, label) => imgs.length > 1 ? h('button', { class: 'lb-btn lb-' + (d > 0 ? 'next' : 'prev'), type: 'button', 'aria-label': label, html: icon(ic), onclick: (e) => { e.stopPropagation(); go(d); } }) : null;
+  const closeBtn = h('button', { class: 'lb-btn lb-x', type: 'button', 'aria-label': 'Закрыть', html: icon('x'), onclick: close });
+  const lb = h('div', { class: 'lb', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Просмотр фото', onclick: (e) => { if (e.target === lb) close(); } },
+    img, nav(-1, 'left', 'Предыдущее фото'), nav(1, 'right', 'Следующее фото'), closeBtn, counter);
+  let sx = null;
+  lb.addEventListener('touchstart', (e) => { sx = e.touches[0].clientX; }, { passive: true });
+  lb.addEventListener('touchend', (e) => { if (sx == null) return; const dx = e.changedTouches[0].clientX - sx; if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1); sx = null; });
+  document.addEventListener('keydown', key, true);
+  document.body.append(lb); show('z'); closeBtn.focus({ preventScroll: true });
+}
+async function setBadge(u, value) {
+  const r = await sb.rpc('set_verified', { target: u.id, value });
+  if (r.error) { toast(ruError(r.error)); return false; }
+  u.verified = value;
+  toast(value ? 'Галочка выдана @' + u.username : 'Галочка снята у @' + u.username);
+  return true;
+}
+function badgeBtn(u, after) {
+  const b = h('button', { type: 'button' });
+  const draw = () => {
+    b.className = 'pill sm ' + (u.verified ? 'line' : 'blue');
+    b.innerHTML = icon('shield'); b.append(u.verified ? 'Снять галочку' : 'Выдать галочку');
+  };
+  b.addEventListener('click', async () => {
+    b.disabled = true; const ok = await setBadge(u, !u.verified); b.disabled = false;
+    if (ok) { draw(); b.classList.remove('flip'); void b.offsetWidth; b.classList.add('flip'); if (after) after(); }
+  });
+  draw();
+  return b;
+}
+function openAdmin() {
+  openWin('Админ-панель', 'me', (body, w) => {
+    const input = h('input', { class: 'inp', id: 'admin-q', type: 'search', placeholder: 'Найти аккаунт по имени или @юзернейму', 'aria-label': 'Поиск аккаунтов' });
+    const list = h('div', { class: 'list' });
+    let t, n = 0;
+    const run = async () => {
+      const my = ++n;
+      const term = input.value.trim().replace(/^@/, '').replace(/[,()%*\\]/g, '');
+      let q = sb.from('profiles').select(P + ',is_admin').limit(100);
+      q = term ? q.or(`username.ilike.%${term}%,name.ilike.%${term}%`).order('username') : q.order('created_at', { ascending: false });
+      const r = await q;
+      if (!w.alive || my !== n) return;
+      list.textContent = '';
+      if (r.error) return list.append(h('div', { class: 'empty err' }, ruError(r.error)));
+      if (!r.data.length) return list.append(emptyBox('search', 'Никого не нашлось', ''));
+      r.data.forEach((u, i) => {
+        const row = h('div', { class: 'person in', style: `animation-delay:${Math.min(i, 10) * 40}ms` });
+        const draw = () => { row.textContent = ''; row.append(whoBlock(u, 44, null, u.is_admin ? h('span', { class: 'chip admin' }, 'админ') : null), badgeBtn(u, draw)); };
+        draw(); list.append(row);
+      });
+    };
+    input.addEventListener('input', () => { clearTimeout(t); t = setTimeout(run, 250); });
+    body.append(h('div', { class: 'admin-note in' }, h('span', { html: icon('shield') }), 'Выдавай синюю галочку подтверждённым аккаунтам. Её видят все пользователи mynet.'), input, list);
+    run();
+  });
+}
+
 /* ---------- session ---------- */
 let currentUid;
 async function onSession(session) {
@@ -607,7 +843,7 @@ async function onSession(session) {
     return;
   }
   const [me] = await Promise.all([
-    sb.from('profiles').select(P + ',bio,created_at').eq('id', uid).maybeSingle(),
+    sb.from('profiles').select(P + ',bio,created_at,is_admin').eq('id', uid).maybeSingle(),
     refreshFollows(uid)
   ]);
   if (me.error || !me.data) {
@@ -743,7 +979,7 @@ function whoBlock(p, size, extra, chip) {
   return h('button', { class: 'who', type: 'button', onclick: () => openProfile(p.username), 'aria-label': 'Профиль ' + p.name },
     avatar(p, size),
     h('div', { class: 'who-t' },
-      h('div', { class: 'who-n' }, p.name),
+      h('div', { class: 'who-n' }, h('span', { class: 'who-nt' }, p.name), badge(p)),
       h('div', { class: 'who-u' }, '@' + p.username + (extra ? ' · ' + extra : ''), chip || null)));
 }
 function postCard(p, i, opts) {
@@ -762,6 +998,8 @@ function postCard(p, i, opts) {
         }
         const r = await sb.from('posts').delete().eq('id', p.id);
         if (r.error) return toast(ruError(r.error));
+        const paths = (p.media || []).map((m) => m && m.path).filter((x) => typeof x === 'string' && x.startsWith(state.me.id + '/'));
+        if (paths.length) sb.storage.from(BUCKET).remove(paths);
         card.classList.add('gone'); setTimeout(() => card.remove(), 350); toast('Пост удалён');
       });
       acts.append(del);
@@ -773,7 +1011,8 @@ function postCard(p, i, opts) {
     });
     acts.append(save);
     card.append(h('div', { class: 'post-head' }, whoBlock(p.author, 44, ago(p.created_at)), acts));
-    card.append(h('div', { class: 'post-text' }, p.text));
+    if (p.text) card.append(h('div', { class: 'post-text' }, p.text));
+    card.append(...mediaBlock(p.media));
     if (p.link_url) {
       let host = p.link_url; try { host = new URL(p.link_url).hostname.replace(/^www\./, ''); } catch (e) {}
       card.append(h('a', { class: 'linkbox', href: p.link_url, target: '_blank', rel: 'noopener noreferrer nofollow' },
@@ -819,7 +1058,7 @@ function commentsBlock(p, redraw) {
     r.data.forEach((c, i) => {
       list.append(h('div', { class: 'cm in', style: `animation-delay:${Math.min(i, 8) * 40}ms` }, avatar(c.author, 30),
         h('div', { class: 'cm-b' },
-          h('button', { type: 'button', onclick: () => openProfile(c.author.username) }, c.author.name), ' ',
+          h('button', { type: 'button', onclick: () => openProfile(c.author.username) }, c.author.name), badge(c.author), ' ',
           h('small', null, '@' + c.author.username + ' · ' + ago(c.created_at)),
           h('div', null, c.text))));
     });
@@ -869,26 +1108,68 @@ function renderFeed() {
   const link = h('input', { class: 'inp link-in', id: 'new-link', type: 'url', maxlength: '300', placeholder: 'https://…', 'aria-label': 'Ссылка', hidden: true });
   const count = h('span', { class: 'count' }, '0 / 500');
   const send = h('button', { class: 'pill', type: 'submit', disabled: true }, 'Опубликовать');
+  const picker = h('input', { type: 'file', id: 'new-files', multiple: true, hidden: true });
+  const strip = h('div', { class: 'cmp-files', hidden: true });
+  let files = [];
+  const canSend = () => { send.disabled = !(ta.value.trim() || files.length); };
+  const drawFiles = () => {
+    strip.textContent = ''; strip.hidden = !files.length;
+    files.forEach((f, i) => {
+      let inner;
+      if (f.kind === 'image') inner = h('img', { src: f.url, alt: '' });
+      else if (f.kind === 'video') inner = h('video', { src: f.url, muted: true, preload: 'metadata' });
+      else inner = h('div', { class: 'cf-file', html: icon(f.kind === 'audio' ? 'music' : 'file') }, h('span', null, f.file.name));
+      strip.append(h('div', { class: 'cf' + (f.kind === 'video' ? ' is-vid' : '') }, inner,
+        f.kind === 'video' ? h('span', { class: 'cf-tag', html: icon('video') }) : null,
+        h('button', { class: 'cf-x', type: 'button', 'aria-label': 'Убрать ' + f.file.name, html: icon('x'), onclick: () => { URL.revokeObjectURL(f.url); files.splice(i, 1); drawFiles(); canSend(); } })));
+    });
+  };
+  const addFiles = (list) => {
+    let skipped = 0;
+    for (const file of list) {
+      if (files.length >= MAX_FILES) { toast('Можно прикрепить до ' + MAX_FILES + ' файлов'); break; }
+      if (file.size > MAX_SIZE) { skipped++; continue; }
+      files.push({ file, kind: kindOf(file.type), url: URL.createObjectURL(file) });
+    }
+    if (skipped) toast('Файлы больше 50 МБ не загружаются');
+    drawFiles(); canSend();
+  };
+  picker.addEventListener('change', () => { addFiles(picker.files); picker.value = ''; });
+  ta.addEventListener('paste', (e) => { const fl = e.clipboardData && e.clipboardData.files; if (fl && fl.length) { e.preventDefault(); addFiles(fl); } });
   ta.addEventListener('input', () => {
     count.textContent = ta.value.length + ' / 500'; count.classList.toggle('warn', ta.value.length > 450);
-    send.disabled = !ta.value.trim();
+    canSend();
     ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 260) + 'px';
   });
   const form = h('form', { class: 'box composer in' },
-    h('div', { class: 'composer-top' }, avatar(state.me, 44), ta), link,
+    h('div', { class: 'composer-top' }, avatar(state.me, 44), ta), strip, link, picker,
     h('div', { class: 'composer-foot' },
-      h('button', { class: 'ghost', type: 'button', html: icon('link') + '<span>Ссылка</span>', onclick: () => { link.hidden = !link.hidden; if (!link.hidden) link.focus(); else link.value = ''; } }),
+      h('div', { style: 'display:flex;gap:2px' },
+        h('button', { class: 'ghost', type: 'button', html: icon('image') + '<span>Медиа</span>', onclick: () => picker.click() }),
+        h('button', { class: 'ghost', type: 'button', html: icon('link') + '<span>Ссылка</span>', onclick: () => { link.hidden = !link.hidden; if (!link.hidden) link.focus(); else link.value = ''; } })),
       h('div', { style: 'display:flex;align-items:center;gap:12px' }, count, send)));
+  ['dragenter', 'dragover'].forEach((ev) => form.addEventListener(ev, (e) => { e.preventDefault(); form.classList.add('drop'); }));
+  ['dragleave', 'drop'].forEach((ev) => form.addEventListener(ev, (e) => { e.preventDefault(); form.classList.remove('drop'); }));
+  form.addEventListener('drop', (e) => { if (e.dataTransfer && e.dataTransfer.files.length) addFiles(e.dataTransfer.files); });
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const text = ta.value.trim(); if (!text) return;
+    const text = ta.value.trim(); if (!text && !files.length) return;
     let url = link.hidden ? '' : link.value.trim();
     if (url && !/^https?:\/\//i.test(url)) url = 'https://' + url;
     if (url) { try { new URL(url); } catch (err) { return toast('Ссылка выглядит неправильно'); } }
-    send.disabled = true;
-    const r = await sb.from('posts').insert({ text, link_url: url || null }).select('id').single();
-    if (r.error) { send.disabled = false; return toast(ruError(r.error)); }
-    ta.value = ''; link.value = ''; link.hidden = true; ta.style.height = 'auto'; count.textContent = '0 / 500';
+    send.disabled = true; form.classList.add('busy');
+    send.innerHTML = '<span class="spin dark"></span>'; send.append(files.length ? 'Загружаю…' : 'Публикую…');
+    let media = [];
+    try { media = await uploadFiles(files.map((f) => f.file)); }
+    catch (err) { form.classList.remove('busy'); send.textContent = 'Опубликовать'; canSend(); return toast('Не получилось загрузить файл: ' + ruError(err)); }
+    const r = await sb.from('posts').insert({ text, link_url: url || null, media }).select('id').single();
+    form.classList.remove('busy'); send.textContent = 'Опубликовать';
+    if (r.error) {
+      if (media.length) sb.storage.from(BUCKET).remove(media.map((m) => m.path));
+      canSend(); return toast(ruError(r.error));
+    }
+    files.forEach((f) => URL.revokeObjectURL(f.url)); files = []; drawFiles();
+    ta.value = ''; link.value = ''; link.hidden = true; ta.style.height = 'auto'; count.textContent = '0 / 500'; canSend();
     toast('Опубликовано'); reload(r.data.id);
   });
   const tabs = segTabs([['all', 'Все'], ['following', 'Подписки']], state.tab, (id) => { state.tab = id; reload(); });
@@ -1039,7 +1320,7 @@ function openProfile(username) {
   openWin('Профиль', mine ? 'me' : 'profile', async (body, w) => {
     body.append(skeleton(1));
     const load = async () => {
-      const r = await sb.from('profiles').select(P + ',bio,created_at').eq('username', username).maybeSingle();
+      const r = await sb.from('profiles').select(P + ',bio,created_at,is_admin').eq('username', username).maybeSingle();
       if (!w.alive) return;
       body.textContent = '';
       if (r.error || !r.data) return body.append(emptyBox('user', 'Профиль не найден', 'Аккаунта @' + username + ' нет в mynet.'));
@@ -1058,10 +1339,14 @@ function openProfile(username) {
       const hh = hue(u.username);
       const banner = h('div', { class: 'pf-banner', style: `background-image:linear-gradient(120deg,hsl(${hh} 85% 60%),hsl(${(hh + 60) % 360} 80% 45%),hsl(${(hh + 150) % 360} 75% 50%),hsl(${hh} 85% 60%))` });
       const head = h('div', { class: 'pf-top' }, h('div', { class: 'pf-ava' }, avatar(u, 92)));
-      const actions = h('div', { style: 'display:flex;gap:8px;padding-bottom:6px' });
+      const actions = h('div', { class: 'pf-acts' });
       const nameRow = h('div', { class: 'pf-name' }, h('h3', null, u.name));
+      const nameBadge = h('span', { class: 'pf-badge' });
+      const drawBadge = () => { nameBadge.textContent = ''; const b = badge(u, true); if (b) nameBadge.append(b); };
+      drawBadge(); nameRow.append(nameBadge);
+      if (u.is_admin) nameRow.append(h('span', { class: 'chip admin', html: icon('shield') }, 'админ'));
       const drawRel = () => {
-        nameRow.querySelectorAll('.chip').forEach((c) => c.remove());
+        nameRow.querySelectorAll('.chip:not(.admin)').forEach((c) => c.remove());
         const c = isMe ? null : relChip(u);
         if (c) nameRow.append(c.textContent === 'друг' ? h('span', { class: 'chip friend', html: icon('users') }, 'вы друзья') : c);
       };
@@ -1080,6 +1365,8 @@ function openProfile(username) {
         countUp(statEls.friends, fr2.length); friends.splice(0, friends.length, ...fr2);
         drawRel();
       }));
+      if (state.me.is_admin) actions.append(badgeBtn(u, drawBadge));
+      if (isMe && state.me.is_admin) actions.append(h('button', { class: 'pill sm line', type: 'button', 'aria-label': 'Админ-панель', title: 'Админ-панель', html: icon('shield'), onclick: openAdmin }));
       head.append(actions);
       drawRel();
       const sinceD = new Date(u.created_at), since = isNaN(sinceD) ? '' : sinceD.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -1117,8 +1404,27 @@ function openEdit(u, done) {
     const bio = h('textarea', { class: 'inp', id: 'e-bio', maxlength: '160' }); bio.value = u.bio || '';
     const left = h('span', { class: 'count' }, (160 - bio.value.length) + ' осталось');
     const msg = h('div', { class: 'err', role: 'alert' });
-    const prev = h('div', { style: 'display:flex;justify-content:center' });
-    const drawPrev = () => { prev.textContent = ''; prev.append(avatar({ username: uname.value || u.username, name: name.value || u.name }, 88)); };
+    const prev = h('div', { class: 'ava-edit' });
+    let newAvatar, avatarPath = u.avatar_path || null, avBusy = false;
+    const avPick = h('input', { type: 'file', id: 'e-avatar', accept: 'image/*', hidden: true });
+    const drawPrev = () => {
+      prev.textContent = '';
+      const a = avatar({ username: uname.value || u.username, name: name.value || u.name, avatar_path: avatarPath }, 96);
+      if (avBusy) a.append(h('span', { class: 'ava-busy' }, h('span', { class: 'spin' })));
+      prev.append(a, h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;justify-content:center' },
+        h('button', { class: 'pill sm line', type: 'button', html: icon('image'), onclick: () => avPick.click() }, avatarPath ? 'Сменить фото' : 'Загрузить фото'),
+        avatarPath ? h('button', { class: 'pill sm line', type: 'button', onclick: () => { avatarPath = null; drawPrev(); } }, 'Убрать') : null), avPick);
+    };
+    avPick.addEventListener('change', async () => {
+      const f = avPick.files[0]; avPick.value = '';
+      if (!f) return;
+      if (!f.type.startsWith('image/')) return toast('Для аватарки нужна картинка');
+      if (f.size > 10 * 1024 * 1024) return toast('Фото должно быть меньше 10 МБ');
+      avBusy = true; drawPrev();
+      try { const [m] = await uploadFiles([f]); if (newAvatar) sb.storage.from(BUCKET).remove([newAvatar]); newAvatar = m.path; avatarPath = m.path; }
+      catch (e) { toast('Не получилось загрузить фото: ' + ruError(e)); }
+      avBusy = false; drawPrev();
+    });
     drawPrev();
     name.addEventListener('input', drawPrev);
     uname.addEventListener('input', () => { uname.value = uname.value.toLowerCase().replace(/[^a-z0-9_]/g, ''); drawPrev(); });
@@ -1131,13 +1437,14 @@ function openEdit(u, done) {
       h('div', { class: 'edit-acts' }, h('button', { class: 'pill sm line', type: 'button', onclick: closeTop }, 'Отмена'), save));
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const next = { name: name.value.trim(), username: uname.value.trim(), bio: bio.value.trim() };
+      const next = { name: name.value.trim(), username: uname.value.trim(), bio: bio.value.trim(), avatar_path: avatarPath };
       if (!next.name) { msg.textContent = 'Напиши имя.'; return; }
       if (!/^[a-z0-9_]{3,20}$/.test(next.username)) { msg.textContent = 'Юзернейм: латинские буквы, цифры и _ , от 3 до 20 символов.'; return; }
       save.disabled = true;
       const q = await sb.from('profiles').update(next).eq('id', u.id);
       save.disabled = false;
       if (q.error) { msg.textContent = ruError(q.error); return; }
+      if (u.avatar_path && u.avatar_path !== next.avatar_path && u.avatar_path.startsWith(state.me.id + '/')) sb.storage.from(BUCKET).remove([u.avatar_path]);
       Object.assign(state.me, next); toast('Профиль сохранён'); done();
     });
     body.append(form);
