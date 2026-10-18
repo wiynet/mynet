@@ -63,8 +63,20 @@ function stickerHTML(id, big) { const s = STK[id] || STK.melk; return `<div clas
 const S = { user: null, me: null, admin: false, liked: new Set(), saved: new Set(), reposted: new Set(), following: new Set(), unread: 0, chats: new Map() };
 const F = { tab: 'fy', posts: [], done: false, loading: false, active: null, paused: false, muted: false };
 const POSTS = new Map(); // id -> post
-const PROFILE_COLS = 'id,username,name,bio,avatar_path,show_likes,show_saves,allow_comments';
-const POST_SELECT = 'id,video_path,caption,sound,created_at,author_id,like_count,comment_count,repost_count,author:melk_profiles!melk_posts_author_id_fkey(id,username,name,avatar_path,allow_comments)';
+const PROFILE_COLS = 'id,username,name,bio,avatar_path,show_likes,show_saves,allow_comments,banner';
+const POST_SELECT = 'id,video_path,caption,sound,sound_post_id,created_at,author_id,like_count,comment_count,repost_count,sound_src:melk_posts!melk_posts_sound_post_id_fkey(id,video_path),author:melk_profiles!melk_posts_author_id_fkey(id,username,name,avatar_path,allow_comments)';
+const soundName = p => (!p.sound || p.sound === 'Оригинальный звук') && !p.sound_post_id ? `Оригинальный звук — @${p.author?.username || 'user'}` : p.sound;
+const ICON_EDIT = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 17.3V20h2.7l9.9-9.9-2.7-2.7zM19.7 7a1 1 0 0 0 0-1.4l-1.3-1.3a1 1 0 0 0-1.4 0l-1.6 1.6 2.7 2.7z"/></svg>';
+const BANNERS = {
+  g1: 'linear-gradient(135deg,#ff4f6d,#ffc93c)', g2: 'linear-gradient(135deg,#5fe3c0,#2b6cff)', g3: 'linear-gradient(135deg,#2b1d4a,#ff7a59 70%,#ffc93c)',
+  g4: 'linear-gradient(160deg,#0f2027,#2c5364)', g5: 'radial-gradient(circle at 20% 30%,#ff4f6d 0 18%,transparent 19%),radial-gradient(circle at 75% 60%,#5fe3c0 0 22%,transparent 23%),radial-gradient(circle at 50% 10%,#ffc93c 0 10%,transparent 11%),#171a22',
+  g6: 'repeating-linear-gradient(45deg,#ffc93c 0 14px,#171a22 14px 28px)', g7: 'linear-gradient(120deg,#8e2de2,#4a00e0)', g8: 'conic-gradient(from 200deg at 70% 40%,#ff4f6d,#ffc93c,#5fe3c0,#2b6cff,#ff4f6d)'
+};
+function bannerStyle(P) {
+  const b = P?.banner || '';
+  if (b.startsWith('img:')) return `background-image:url('${esc(avatarUrl(b.slice(4)))}');background-size:cover;background-position:center`;
+  return `background:${BANNERS[b] || `linear-gradient(135deg,${color(P?.id)},#171a22)`}`;
+}
 function normPost(r) { return { ...r, likeCount: r.like_count ?? 0, commentCount: r.comment_count ?? 0, repostCount: r.repost_count ?? 0 }; }
 
 /* ---------- auth ---------- */
@@ -284,10 +296,11 @@ function slide(p) {
     <button class="act rp">${ICON.repost}<span></span></button>
     <button class="act sv">${ICON.save}<span></span></button>
     <button class="act sh">${ICON.share}<span>Отправить</span></button>
+    ${mine ? `<button class="act ed">${ICON_EDIT}<span>Изменить</span></button>` : ''}
     <div class="disc" style="${avStyle(p.author, p.author_id)}"></div>
   </div>
   <div class="info"><button class="handle"></button><div class="cap">${capHTML(p.caption)}</div>
-    <div class="sound"><span class="eqz"><i></i><i></i><i></i></span><b>${esc(p.sound)} · ${esc(p.sound)}</b></div><div class="when">${ago(p.created_at)}</div></div>
+    <button class="sound" aria-label="Звук"><span class="eqz"><i></i><i></i><i></i></span><b>${esc(soundName(p))} · ${esc(soundName(p))}</b></button><div class="when">${ago(p.created_at)}</div></div>
   <div class="progress"><i></i></div>`;
   el.querySelector('.handle').textContent = '@' + (p.author?.username || 'user');
   const v = el.querySelector('video');
@@ -302,12 +315,15 @@ function slide(p) {
   });
   el.querySelector('.like').onclick = () => { if (!needLogin('Войдите, чтобы ставить лайки.')) toggleLike(p); };
   el.querySelector('.cm').onclick = () => openComments(p);
-  el.querySelector('.rp').onclick = () => { if (!needLogin('Войдите, чтобы делать репосты.')) toggleRepost(p); };
+  el.querySelector('.rp').onclick = () => { if (!needLogin('Войдите, чтобы делать репосты.')) openRepost(p); };
+  el.querySelector('.sound').onclick = () => openSound(p);
+  el.querySelector('.ed')?.addEventListener('click', () => openEdit(p));
+  if (p.sound_src && p.sound_src.id !== p.id) { const a = document.createElement('audio'); a.className = 'aux'; a.loop = true; a.preload = 'none'; a.src = videoUrl(p.sound_src.video_path); el.appendChild(a); el.dataset.borrowed = '1'; }
   el.querySelector('.sv').onclick = () => { if (!needLogin('Войдите, чтобы сохранять ролики.')) toggleSave(p); };
   el.querySelector('.sh').onclick = () => openShare(p);
   el.querySelector('.avatar').onclick = e => { if (e.target.classList.contains('follow')) { e.stopPropagation(); if (!needLogin('Войдите, чтобы подписываться.')) toggleFollow(p.author_id); return; } openProfile(p.author_id); };
   el.querySelector('.handle').onclick = () => openProfile(p.author_id);
-  el.querySelector('.mute').onclick = () => { F.muted = !F.muted; feed.querySelectorAll('video').forEach(x => x.muted = F.muted); feed.querySelectorAll('.mute').forEach(b => b.textContent = F.muted ? 'Звук выкл.' : 'Звук вкл.'); };
+  el.querySelector('.mute').onclick = () => { F.muted = !F.muted; applyMute(); };
   fillSlide(el, p);
   return el;
 }
@@ -332,16 +348,26 @@ function sparks(btn, colorVar) {
   const ring = document.createElement('i'); ring.className = 'ring'; ring.style.setProperty('--c', colorVar); btn.appendChild(ring); setTimeout(() => ring.remove(), 600);
 }
 function refreshSlides() { feed.querySelectorAll('.slide').forEach(el => { const p = POSTS.get(el.dataset.id); if (p) fillSlide(el, p); }); }
+function applyMute() {
+  feed.querySelectorAll('.slide').forEach(sl => { const v = sl.querySelector('.stage video'), a = sl.querySelector('audio.aux'); if (a) { a.muted = F.muted; if (v) v.muted = true; } else if (v) v.muted = F.muted; });
+  feed.querySelectorAll('.mute').forEach(b => b.textContent = F.muted ? 'Звук выкл.' : 'Звук вкл.');
+}
 function activate(el) {
   if (F.active === el) return;
-  if (F.active) F.active.querySelector('video')?.pause();
-  if (F.active) F.active.classList.remove('live');
+  if (F.active) { F.active.querySelector('video')?.pause(); F.active.querySelector('audio.aux')?.pause(); F.active.classList.remove('live'); }
   F.active = el; F.paused = false; el.classList.remove('paused'); el.classList.add('live');
-  const v = el.querySelector('video'); v.muted = F.muted; v.currentTime = 0;
-  v.play().catch(() => { v.muted = F.muted = true; feed.querySelectorAll('.mute').forEach(b => b.textContent = 'Звук выкл.'); v.play().catch(() => { }); });
+  const v = el.querySelector('.stage video'), aux = el.querySelector('audio.aux');
+  const fallback = () => { F.muted = true; applyMute(); v.play().catch(() => { }); aux?.play().catch(() => { }); };
+  v.currentTime = 0;
+  if (aux) { v.muted = true; aux.muted = F.muted; aux.currentTime = 0; v.play().catch(() => { }); aux.play().catch(fallback); }
+  else { v.muted = F.muted; v.play().catch(fallback); }
   const idx = [...feed.children].indexOf(el); if (idx >= feed.children.length - 3) loadMore();
 }
-function togglePause() { if (!F.active) return; F.paused = !F.paused; F.active.classList.toggle('paused', F.paused); const v = F.active.querySelector('video'); F.paused ? v.pause() : v.play().catch(() => { }); }
+function togglePause() {
+  if (!F.active) return; F.paused = !F.paused; F.active.classList.toggle('paused', F.paused);
+  const v = F.active.querySelector('.stage video'), a = F.active.querySelector('audio.aux');
+  if (F.paused) { v.pause(); a?.pause(); } else { v.play().catch(() => { }); a?.play().catch(() => { }); }
+}
 function burst(el, e) {
   const r = el.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
   const h = document.createElement('div'); h.className = 'burst'; h.innerHTML = ICON.heart; h.style.left = x + 'px'; h.style.top = y + 'px'; h.style.setProperty('--r', (Math.random() * 30 - 15) + 'deg'); el.appendChild(h); setTimeout(() => h.remove(), 900);
@@ -365,7 +391,118 @@ async function toggleRel(p, set, table, countKey, btnSel, color2, msgs) {
 }
 const toggleLike = p => toggleRel(p, S.liked, 'melk_likes', 'likeCount', '.like', 'var(--heart)');
 const toggleSave = p => toggleRel(p, S.saved, 'melk_saves', null, '.sv', 'var(--sun)', ['Сохранено в избранное', 'Убрано из избранного']);
-const toggleRepost = p => toggleRel(p, S.reposted, 'melk_reposts', 'repostCount', '.rp', 'var(--mint)', ['Репост в вашем профиле', 'Репост убран']);
+async function openRepost(p) {
+  const on = S.reposted.has(p.id);
+  const body = document.createElement('div'); body.className = 'form';
+  body.innerHTML = `<div class="rpcard"><video muted playsinline preload="metadata" src="${esc(videoUrl(p.video_path))}#t=0.5"></video><div><b></b><small></small></div></div>
+    <div class="field"><label for="rp-note">Заметка к репосту</label><textarea id="rp-note" rows="3" maxlength="150" placeholder="Почему стоит посмотреть? Необязательно"></textarea><span class="count" id="rp-c">0/150</span></div>
+    <p class="err" id="rp-err" hidden></p>
+    <button class="primary" id="rp-go">${on ? 'Сохранить заметку' : 'Репостнуть'}</button>
+    ${on ? '<button class="ghost danger" id="rp-del">Убрать репост</button>' : ''}
+    <p class="hint">Репост с заметкой появится во вкладке «Репосты» в вашем профиле.</p>`;
+  sheet(on ? 'Ваш репост' : 'Репост', body);
+  body.querySelector('.rpcard b').textContent = '@' + (p.author?.username || 'user'); body.querySelector('.rpcard small').textContent = p.caption || soundName(p);
+  const ta = body.querySelector('#rp-note'), cnt = body.querySelector('#rp-c'), go = body.querySelector('#rp-go');
+  ta.oninput = () => cnt.textContent = ta.value.length + '/150';
+  if (on) { const { data } = await sb.from('melk_reposts').select('note').eq('post_id', p.id).eq('user_id', S.user.id).maybeSingle(); ta.value = data?.note || ''; ta.oninput(); }
+  go.onclick = async () => {
+    go.disabled = true; const note = ta.value.trim().slice(0, 150);
+    const { error } = on ? await sb.from('melk_reposts').update({ note }).eq('post_id', p.id).eq('user_id', S.user.id)
+                         : await sb.from('melk_reposts').insert({ post_id: p.id, user_id: S.user.id, note });
+    go.disabled = false; if (error && error.code !== '23505') return dbErr(error);
+    if (!on) { S.reposted.add(p.id); p.repostCount++; refreshSlides(); feed.querySelectorAll(`[data-id="${p.id}"] .rp`).forEach(b => { replay(b, 'pop'); sparks(b, 'var(--mint)'); }); }
+    closeSheet(); toast(on ? 'Заметка сохранена' : 'Репост в вашем профиле');
+  };
+  body.querySelector('#rp-del')?.addEventListener('click', async () => {
+    const { error } = await sb.from('melk_reposts').delete().eq('post_id', p.id).eq('user_id', S.user.id); if (error) return dbErr(error);
+    S.reposted.delete(p.id); p.repostCount = Math.max(0, p.repostCount - 1); refreshSlides(); closeSheet(); toast('Репост убран');
+  });
+}
+
+/* ---------- edit own video ---------- */
+function openEdit(p) {
+  const body = document.createElement('div'); body.className = 'form';
+  body.innerHTML = `<div class="editvid"><video muted loop playsinline autoplay src="${esc(videoUrl(p.video_path))}"></video><label class="ghost swap" for="ed-file">Заменить видео<input type="file" id="ed-file" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v" hidden></label></div>
+    <div class="field"><label for="ed-cap">Подпись</label><textarea id="ed-cap" rows="3" maxlength="300"></textarea></div>
+    ${p.sound_post_id ? `<div class="soundchip">${ICON.play}<span></span></div>` : '<div class="field"><label for="ed-sound">Звук</label><input type="text" id="ed-sound" maxlength="60"></div>'}
+    <p class="err" id="ed-err" hidden></p>
+    <button class="primary" id="ed-go">Сохранить</button>
+    <button class="ghost danger" id="ed-del">Удалить ролик</button>`;
+  sheet('Изменить ролик', body);
+  body.querySelector('#ed-cap').value = p.caption || '';
+  if (p.sound_post_id) body.querySelector('.soundchip span').textContent = 'Звук: ' + soundName(p); else body.querySelector('#ed-sound').value = p.sound || '';
+  let file = null, type = null, prev = null;
+  const err = body.querySelector('#ed-err'), fail = t => { err.textContent = t; err.hidden = false; }, go = body.querySelector('#ed-go');
+  body.querySelector('#ed-file').onchange = e => {
+    const x = e.target.files[0]; if (!x) return; err.hidden = true; type = pickVideoType(x);
+    if (!type) return fail('Этот формат не подходит. Нужен MP4, WebM или MOV.');
+    if (x.size > MAX_MB * 1048576) return fail(`Файл весит ${(x.size / 1048576).toFixed(1)} МБ, а можно до ${MAX_MB} МБ.`);
+    file = x; if (prev) URL.revokeObjectURL(prev); prev = URL.createObjectURL(x); const v = body.querySelector('.editvid video'); v.src = prev; replay(body.querySelector('.editvid'), 'pop');
+  };
+  go.onclick = async () => {
+    go.disabled = true; go.classList.add('loading'); go.textContent = 'Сохраняем…';
+    const upd = { caption: body.querySelector('#ed-cap').value.trim().slice(0, 300) };
+    if (!p.sound_post_id) upd.sound = body.querySelector('#ed-sound').value.trim().slice(0, 60) || 'Оригинальный звук';
+    let oldPath = null;
+    if (file) {
+      const ext = type === 'video/webm' ? 'webm' : type === 'video/quicktime' ? 'mov' : 'mp4', path = `${S.user.id}/${crypto.randomUUID()}.${ext}`;
+      const up = await sb.storage.from(BUCKET).upload(path, file, { contentType: type, cacheControl: '31536000' });
+      if (up.error) { go.disabled = false; go.classList.remove('loading'); go.textContent = 'Сохранить'; return fail('Видео не загрузилось. Попробуйте ещё раз.'); }
+      upd.video_path = path; oldPath = p.video_path;
+    }
+    const { error } = await sb.from('melk_posts').update(upd).eq('id', p.id);
+    if (error) { if (upd.video_path) sb.storage.from(BUCKET).remove([upd.video_path]); go.disabled = false; go.classList.remove('loading'); go.textContent = 'Сохранить'; return fail('Не получилось сохранить. Попробуйте ещё раз.'); }
+    if (oldPath) sb.storage.from(BUCKET).remove([oldPath]);
+    Object.assign(p, upd); const live = POSTS.get(p.id); if (live && live !== p) Object.assign(live, upd);
+    const el = feed.querySelector(`[data-id="${p.id}"]`);
+    if (el) {
+      el.querySelector('.cap').innerHTML = capHTML(p.caption);
+      el.querySelector('.sound b').textContent = soundName(p) + ' · ' + soundName(p);
+      if (upd.video_path) { const v = el.querySelector('.stage video'); v.classList.remove('ready'); v.src = videoUrl(p.video_path); v.addEventListener('loadeddata', () => v.classList.add('ready'), { once: true }); if (F.active === el) v.play().catch(() => { }); }
+      replay(el.querySelector('.info'), 'flash');
+    }
+    if (prev) URL.revokeObjectURL(prev);
+    closeSheet(); toast('Ролик обновлён');
+  };
+  const del = body.querySelector('#ed-del'); armButton(del, 'Точно удалить?', async () => { closeSheet(); await deletePost(p); document.querySelectorAll(`.tile[data-pid="${p.id}"]`).forEach(t => t.remove()); });
+}
+function pickVideoType(x) { const ext = (x.name.split('.').pop() || '').toLowerCase(); return ['video/mp4', 'video/webm', 'video/quicktime'].includes(x.type) ? x.type : ext === 'webm' ? 'video/webm' : ext === 'mov' ? 'video/quicktime' : ['mp4', 'm4v'].includes(ext) ? 'video/mp4' : null; }
+
+/* ---------- sound page ---------- */
+async function openSound(p) {
+  const rootId = p.sound_post_id || p.id;
+  const body = document.createElement('div'); body.className = 'soundpg';
+  body.innerHTML = '<p class="hint" style="padding:30px;text-align:center">Загружаем звук…</p>';
+  const pg = page('Звук', body);
+  const [rootQ, listQ] = await Promise.all([
+    sb.from('melk_posts').select(POST_SELECT).eq('id', rootId).maybeSingle(),
+    sb.from('melk_posts').select(POST_SELECT).or(`id.eq.${rootId},sound_post_id.eq.${rootId}`).order('like_count', { ascending: false }).limit(60)
+  ]);
+  const root = rootQ.data ? normPost(rootQ.data) : null;
+  if (!root) { body.innerHTML = '<div class="empty small"><h2>Звук недоступен</h2><p>Оригинальный ролик удалён.</p></div>'; return; }
+  const vids = (listQ.data || []).map(normPost).sort((a, b) => (b.id === rootId) - (a.id === rootId));
+  const name = soundName(root);
+  body.innerHTML = `<div class="shero"><button class="sdisc" aria-label="Послушать"><span class="pav big" style="${avStyle(root.author, root.author_id)}">${avText(root.author)}</span><i class="sp">${ICON.play}</i></button>
+    <div class="sinfo"><h2></h2><button class="sauthor"></button><small>${fmt(vids.length)} ${plural(vids.length, 'видео', 'видео', 'видео')} с этим звуком</small></div></div>
+    <audio class="sprev" loop preload="none" src="${esc(videoUrl(root.video_path))}"></audio>
+    <div class="row"><button class="primary" id="s-shoot">${ICON.camera} Снять с этим звуком</button></div>
+    <div class="row"><button class="ghost" id="s-pick">Загрузить из галереи</button><button class="ghost" id="s-share">${ICON.link} Ссылка</button></div>
+    <div class="grid"></div>`;
+  body.querySelector('h2').textContent = name; body.querySelector('.sauthor').textContent = '@' + (root.author?.username || 'user');
+  body.querySelector('.sauthor').onclick = () => openProfile(root.author_id);
+  const au = body.querySelector('.sprev'), disc = body.querySelector('.sdisc');
+  disc.onclick = () => { if (au.paused) { feed.querySelectorAll('video,audio').forEach(m => m.pause()); au.play().then(() => disc.classList.add('playing')).catch(() => toast('Не получилось включить звук')); } else { au.pause(); disc.classList.remove('playing'); } };
+  const useSound = gallery => { au.pause(); openUpload({ soundId: rootId, soundName: name, soundSrc: root.video_path, gallery }); };
+  body.querySelector('#s-shoot').onclick = () => useSound(false);
+  body.querySelector('#s-pick').onclick = () => useSound(true);
+  body.querySelector('#s-share').onclick = () => copy(postLink(rootId), 'Ссылка на звук скопирована');
+  const g = body.querySelector('.grid');
+  vids.forEach((v, i) => {
+    const b = document.createElement('div'); b.className = 'tile'; b.tabIndex = 0; b.setAttribute('role', 'button'); b.style.animationDelay = Math.min(i, 8) * 40 + 'ms';
+    b.innerHTML = `<video muted playsinline preload="metadata" src="${esc(videoUrl(v.video_path))}#t=0.5"></video><span class="n">♥ ${fmt(v.likeCount)}</span>${v.id === rootId ? '<span class="orig">Оригинал</span>' : ''}`;
+    b.onclick = () => goToPost(v.id); g.appendChild(b);
+  });
+}
 async function toggleFollow(uid) {
   const key = 'f' + uid; if (busy.has(key)) return false; busy.add(key);
   const on = !S.following.has(uid); on ? S.following.add(uid) : S.following.delete(uid); refreshSlides();
@@ -671,41 +808,58 @@ async function openComments(p) {
 }
 
 /* ---------- upload ---------- */
-function openUpload() {
+function openUpload(opts = {}) {
   if (needLogin('Войдите, чтобы публиковать ролики.')) return;
+  let snd = opts.soundId ? { id: opts.soundId, name: opts.soundName, src: opts.soundSrc } : null;
   const body = document.createElement('div'); body.className = 'form';
-  body.innerHTML = `<label class="drop" id="drop" for="up-file"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4M6 10l6-6 6 6M4 20h16"/></svg><span>Выберите вертикальное видео (MP4, WebM или MOV), до ${MAX_MB} МБ</span><input type="file" id="up-file" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v" hidden></label>
+  body.innerHTML = `<div class="drop" id="drop"><div class="pick">
+      <label class="pickbtn" for="up-cam">${ICON.camera}<b>Снять</b><input type="file" id="up-cam" accept="video/*" capture="user" hidden></label>
+      <label class="pickbtn" for="up-file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4M6 10l6-6 6 6M4 20h16"/></svg><b>Из галереи</b><input type="file" id="up-file" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v" hidden></label>
+    </div><span class="dh">Вертикальное видео MP4, WebM или MOV, до ${MAX_MB} МБ</span></div>
+  <div id="up-snd"></div>
   <div class="field"><label for="up-cap">Подпись</label><textarea id="up-cap" rows="3" maxlength="300" placeholder="Расскажите о ролике и добавьте #хэштеги"></textarea></div>
-  <div class="field"><label for="up-sound">Звук</label><input type="text" id="up-sound" maxlength="60" value="Оригинальный звук"></div>
   <p class="err" id="up-err" hidden></p>
   <button class="primary" id="up-go" disabled>Опубликовать</button>
-  <p class="hint">Ролик сразу увидят все, кто открывает «Мельк». Удалить его можно в своём профиле.</p>`;
-  sheet('Новый ролик', body);
+  <p class="hint">Ролик сразу увидят все, кто открывает «Мельк». Изменить или удалить его можно кнопкой «Изменить» у ролика.</p>`;
+  sheet(snd ? 'Ролик со звуком' : 'Новый ролик', body);
+  const sndBox = body.querySelector('#up-snd');
+  let au = null;
+  const drawSound = () => {
+    if (snd) {
+      sndBox.innerHTML = `<div class="soundchip on"><span class="eqz"><i></i><i></i><i></i></span><span class="sn"></span><button class="x2" aria-label="Убрать звук">×</button></div><p class="hint">В ролике будет играть этот звук вместо звука с камеры.</p>`;
+      sndBox.querySelector('.sn').textContent = snd.name;
+      sndBox.querySelector('.x2').onclick = () => { snd = null; au?.pause(); au = null; drawSound(); };
+      au = new Audio(videoUrl(snd.src)); au.loop = true;
+    } else sndBox.innerHTML = '<div class="field"><label for="up-sound">Звук</label><input type="text" id="up-sound" maxlength="60" value="Оригинальный звук"></div>';
+  };
+  drawSound();
   let file = null, type = null, preview = null;
-  const f = body.querySelector('#up-file'), drop = body.querySelector('#drop'), go = body.querySelector('#up-go'), err = body.querySelector('#up-err');
+  const drop = body.querySelector('#drop'), go = body.querySelector('#up-go'), err = body.querySelector('#up-err');
   const fail = t => { err.textContent = t; err.hidden = false; };
-  f.onchange = () => {
-    err.hidden = true; const x = f.files[0]; if (!x) return;
-    const ext = (x.name.split('.').pop() || '').toLowerCase();
-    type = ['video/mp4', 'video/webm', 'video/quicktime'].includes(x.type) ? x.type : ext === 'webm' ? 'video/webm' : ext === 'mov' ? 'video/quicktime' : ['mp4', 'm4v'].includes(ext) ? 'video/mp4' : null;
+  const onPick = e => {
+    err.hidden = true; const x = e.target.files[0]; if (!x) return;
+    type = pickVideoType(x);
     if (!type) { go.disabled = true; return fail('Этот формат не подходит. Нужен MP4, WebM или MOV.'); }
     if (x.size > MAX_MB * 1048576) { go.disabled = true; return fail(`Файл весит ${(x.size / 1048576).toFixed(1)} МБ, а можно до ${MAX_MB} МБ. Обрежьте или сожмите ролик.`); }
     file = x; if (preview) URL.revokeObjectURL(preview); preview = URL.createObjectURL(x); drop.classList.add('has');
-    drop.innerHTML = '<video muted autoplay loop playsinline></video><span></span>'; drop.querySelector('video').src = preview; drop.querySelector('span').textContent = x.name; go.disabled = false;
+    drop.innerHTML = '<video muted autoplay loop playsinline></video><span></span>'; const v = drop.querySelector('video'); v.src = preview; drop.querySelector('span').textContent = x.name; go.disabled = false;
+    if (au) { au.currentTime = 0; au.play().catch(() => { }); v.onplay = () => { au.currentTime = v.currentTime; }; }
   };
+  body.querySelector('#up-cam').onchange = onPick; body.querySelector('#up-file').onchange = onPick;
+  if (opts.gallery === false) setTimeout(() => body.querySelector('#up-cam').click(), 350);
+  if (opts.gallery === true) setTimeout(() => body.querySelector('#up-file').click(), 350);
+  const stopAudio = new MutationObserver(() => { if (!document.body.contains(body)) { au?.pause(); stopAudio.disconnect(); } }); stopAudio.observe(app, { childList: true });
   go.onclick = async () => {
     if (!file) return; go.disabled = true; go.classList.add('loading'); go.textContent = 'Загружаем…'; err.hidden = true;
     const ext = type === 'video/webm' ? 'webm' : type === 'video/quicktime' ? 'mov' : 'mp4';
     const path = `${S.user.id}/${crypto.randomUUID()}.${ext}`;
     const up = await sb.storage.from(BUCKET).upload(path, file, { contentType: type, cacheControl: '31536000' });
     if (up.error) { go.disabled = false; go.classList.remove('loading'); go.textContent = 'Опубликовать'; return fail(/size|large/i.test(up.error.message) ? `Файл слишком большой, можно до ${MAX_MB} МБ.` : /mime|type/i.test(up.error.message) ? 'Этот формат не подходит.' : 'Видео не загрузилось. Попробуйте ещё раз.'); }
-    const { data, error } = await sb.from('melk_posts').insert({
-      author_id: S.user.id, video_path: path,
-      caption: body.querySelector('#up-cap').value.trim().slice(0, 300),
-      sound: body.querySelector('#up-sound').value.trim().slice(0, 60) || 'Оригинальный звук'
-    }).select('id').single();
+    const row = { author_id: S.user.id, video_path: path, caption: body.querySelector('#up-cap').value.trim().slice(0, 300) };
+    if (snd) { row.sound_post_id = snd.id; row.sound = snd.name.slice(0, 60); } else row.sound = (body.querySelector('#up-sound')?.value || '').trim().slice(0, 60) || 'Оригинальный звук';
+    const { data, error } = await sb.from('melk_posts').insert(row).select('id').single();
     if (error) { await sb.storage.from(BUCKET).remove([path]); go.disabled = false; go.classList.remove('loading'); go.textContent = 'Опубликовать'; return fail('Не получилось опубликовать. Попробуйте ещё раз.'); }
-    if (preview) URL.revokeObjectURL(preview);
+    if (preview) URL.revokeObjectURL(preview); au?.pause();
     closeSheet(); await goToPost(data.id); confetti(); toast('Опубликовано');
   };
 }
@@ -732,6 +886,39 @@ async function changeAvatar(file, P) {
   POSTS.forEach(p => { if (p.author_id === S.user.id && p.author) p.author.avatar_path = path; });
   feed.querySelectorAll('.slide').forEach(el => { const p = POSTS.get(el.dataset.id); if (p && p.author_id === S.user.id) { el.querySelector('.avatar').setAttribute('style', avStyle(p.author, p.author_id)); el.querySelector('.avatar').firstChild?.nodeType === 3 && (el.querySelector('.avatar').firstChild.textContent = ''); el.querySelector('.disc').setAttribute('style', avStyle(p.author, p.author_id)); } });
   toast('Аватарка обновлена'); return true;
+}
+
+/* ---------- profile background ---------- */
+async function bannerJpeg(file) {
+  const img = await createImageBitmap(file); const w = Math.min(1200, img.width), h = Math.round(w / 2.4);
+  const sr = img.width / img.height > 2.4 ? [(img.width - img.height * 2.4) / 2, 0, img.height * 2.4, img.height] : [0, (img.height - img.width / 2.4) / 2, img.width, img.width / 2.4];
+  const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(img, ...sr, 0, 0, w, h);
+  return new Promise(r => c.toBlob(r, 'image/jpeg', .85));
+}
+function openBannerPicker(P, redraw) {
+  const body = document.createElement('div'); body.className = 'form';
+  body.innerHTML = `<div class="bnprev" style="${bannerStyle(P)}"></div>
+    <div class="swatches">${Object.keys(BANNERS).map(k => `<button class="swatch${P.banner === k ? ' on' : ''}" data-b="${k}" style="background:${BANNERS[k]}" aria-label="Фон ${k.slice(1)}"></button>`).join('')}</div>
+    <label class="ghost" for="bn-file" style="text-align:center">${ICON.camera} Своя картинка<input type="file" id="bn-file" accept="image/jpeg,image/png,image/webp,image/*" hidden></label>
+    ${P.banner ? '<button class="linkbtn" id="bn-reset">Вернуть обычный фон</button>' : ''}`;
+  sheet('Фон профиля', body);
+  const set = async val => {
+    const old = P.banner; const { error } = await sb.from('melk_profiles').update({ banner: val }).eq('id', P.id);
+    if (error) return dbErr(error);
+    if (old && old.startsWith('img:') && old !== val) sb.storage.from(AVATARS).remove([old.slice(4)]);
+    P.banner = val; if (S.me) S.me.banner = val; body.querySelector('.bnprev').setAttribute('style', bannerStyle(P)); replay(body.querySelector('.bnprev'), 'pop');
+    body.querySelectorAll('.swatch').forEach(s => s.classList.toggle('on', s.dataset.b === val)); redraw(); toast('Фон обновлён');
+  };
+  body.querySelectorAll('.swatch').forEach(b => b.onclick = () => set(b.dataset.b));
+  body.querySelector('#bn-reset')?.addEventListener('click', () => { set(null); closeSheet(); });
+  body.querySelector('#bn-file').onchange = async e => {
+    const f = e.target.files[0]; if (!f) return; if (!/^image\//.test(f.type)) return toast('Нужна картинка: JPG, PNG или WebP.');
+    let blob; try { blob = await bannerJpeg(f); } catch (_) { return toast('Не получилось открыть эту картинку.'); }
+    const path = `${S.user.id}/banner-${Date.now()}.jpg`;
+    const up = await sb.storage.from(AVATARS).upload(path, blob, { contentType: 'image/jpeg', cacheControl: '31536000' });
+    if (up.error) return dbErr(up.error);
+    set('img:' + path);
+  };
 }
 
 /* ---------- profile ---------- */
@@ -785,14 +972,17 @@ async function openProfile(uid) {
     const v = document.createElement('video'); v.muted = true; v.preload = 'metadata'; v.playsInline = true; v.src = videoUrl(p.video_path) + '#t=0.5'; b.appendChild(v);
     const n = document.createElement('span'); n.className = 'n'; n.textContent = '♥ ' + fmt(p.likeCount); b.appendChild(n);
     if (badge) { const k = document.createElement('span'); k.className = 'tb'; k.innerHTML = badge; b.appendChild(k); }
+    b.dataset.pid = p.id;
+    if (p._note) { const q = document.createElement('span'); q.className = 'tnote'; q.textContent = p._note; b.appendChild(q); }
     b.onclick = () => goToPost(p.id); b.onkeydown = e => { if (e.key === 'Enter') goToPost(p.id); };
-    if (canDel) { const x = document.createElement('button'); x.className = 'rm'; x.textContent = 'Удалить'; armButton(x, 'Точно?', async () => { await deletePost(p); b.remove(); }); b.appendChild(x); }
+    if (canDel && S.user && p.author_id === S.user.id) { const x = document.createElement('button'); x.className = 'rm ed2'; x.innerHTML = ICON_EDIT + 'Изменить'; x.onclick = e => { e.stopPropagation(); openEdit(p); }; b.appendChild(x); }
+    else if (canDel) { const x = document.createElement('button'); x.className = 'rm'; x.textContent = 'Удалить'; armButton(x, 'Точно?', async () => { await deletePost(p); b.remove(); }); b.appendChild(x); }
     return b;
   };
   async function loadList(kind) {
     const tbl = { reposts: 'melk_reposts', liked: 'melk_likes', saved: 'melk_saves' }[kind];
-    const { data } = await sb.from(tbl).select(`created_at,post:melk_posts(${POST_SELECT})`).eq('user_id', uid).order('created_at', { ascending: false }).limit(60);
-    lists[kind] = (data || []).filter(r => r.post).map(r => normPost(r.post)); draw();
+    const { data } = await sb.from(tbl).select(`created_at,${kind === 'reposts' ? 'note,' : ''}post:melk_posts(${POST_SELECT})`).eq('user_id', uid).order('created_at', { ascending: false }).limit(60);
+    lists[kind] = (data || []).filter(r => r.post).map(r => ({ ...normPost(r.post), _note: r.note || '' })); draw();
   }
   function tabsFor() {
     const t = [['posts', 'Ролики'], ['reposts', 'Репосты']];
@@ -802,7 +992,7 @@ async function openProfile(uid) {
   }
   function draw() {
     const tabs = tabsFor(); if (!tabs.some(t => t[0] === tab)) tab = 'posts';
-    body.innerHTML = `<div class="avwrap"><div class="avatar big" style="${avStyle(P, P.id)}">${avText(P)}</div>${me ? `<label class="avedit" for="pf-av" aria-label="Сменить аватарку">${ICON.camera}<input type="file" id="pf-av" accept="image/jpeg,image/png,image/webp,image/*" hidden></label>` : ''}</div>
+    body.innerHTML = `<div class="banner" style="${bannerStyle(P)}">${me ? '<button class="bnedit" id="pf-bn">' + ICON.camera + ' Фон</button>' : ''}</div><div class="avwrap"><div class="avatar big" style="${avStyle(P, P.id)}">${avText(P)}</div>${me ? `<label class="avedit" for="pf-av" aria-label="Сменить аватарку">${ICON.camera}<input type="file" id="pf-av" accept="image/jpeg,image/png,image/webp,image/*" hidden></label>` : ''}</div>
     <div class="nm"></div><div class="un"></div><p class="bio"></p>
     <div class="stats"><div><b>${fmt(followerCount)}</b>подписчики</div><div><b>${fmt(fing.count || 0)}</b>подписки</div><div><b>${fmt(likesGot)}</b>лайки</div></div>
     <div class="row" id="pf-actions"></div><div id="pf-edit" style="width:100%"></div>
@@ -812,6 +1002,7 @@ async function openProfile(uid) {
     const bio = body.querySelector('.bio'); bio.textContent = P.bio || (me ? 'Добавьте пару слов о себе.' : ''); bio.hidden = !bio.textContent;
     const avIn = body.querySelector('#pf-av');
     if (avIn) avIn.onchange = async () => { const a = body.querySelector('.avatar.big'); a.classList.add('loading'); if (await changeAvatar(avIn.files[0], P)) draw(); else a.classList.remove('loading'); };
+    body.querySelector('#pf-bn')?.addEventListener('click', () => openBannerPicker(P, draw));
     const acts = body.querySelector('#pf-actions');
     if (me) {
       const e = document.createElement('button'); e.className = 'ghost'; e.textContent = editing ? 'Отмена' : 'Изменить профиль'; e.onclick = () => { editing = !editing; draw(); };
@@ -826,7 +1017,7 @@ async function openProfile(uid) {
       const ed = body.querySelector('#pf-edit'); ed.className = 'form'; ed.style.padding = '0';
       ed.innerHTML = `<div class="field"><label for="pf-name">Имя</label><input type="text" id="pf-name" maxlength="40"></div>
       <div class="field"><label for="pf-bio">О себе</label><textarea id="pf-bio" rows="3" maxlength="160"></textarea></div><p class="err" id="pf-err" hidden></p><button class="primary" id="pf-save">Сохранить</button>
-      <p class="hint">Аватарку можно сменить, нажав на значок камеры у фото. Кто видит лайки и избранное, настраивается в меню «⋯» сверху.</p>`;
+      <p class="hint">Аватарку можно сменить значком камеры у фото, а фон профиля кнопкой «Фон» сверху. Кто видит лайки и избранное, настраивается в меню «⋯» сверху.</p>`;
       ed.querySelector('#pf-name').value = P.name; ed.querySelector('#pf-bio').value = P.bio || '';
       ed.querySelector('#pf-save').onclick = async () => {
         const name = ed.querySelector('#pf-name').value.trim().slice(0, 40), bioT = ed.querySelector('#pf-bio').value.trim().slice(0, 160);
