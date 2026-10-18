@@ -618,3 +618,42 @@ label.ghost svg{width:18px;height:18px}
 .botchip{display:inline-block;vertical-align:middle;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#111;background:linear-gradient(90deg,var(--mint),var(--sun));padding:2px 7px;border-radius:6px;text-shadow:none;margin-left:4px}
 .tile canvas.gthumb,.pcard canvas.gthumb{width:100%;height:100%;object-fit:cover;display:block}
 .rpcard canvas.gthumb,.rpcard video{width:54px;height:72px;object-fit:cover;border-radius:8px;flex:none}
+
+/* ================= v6: names, repost pill, saved accounts, video banners ================= */
+.who2{display:flex;flex-direction:column;gap:3px;align-items:flex-start}
+.who2 .handle{font-size:17px;line-height:1.2}
+.subline{display:flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:100%}
+.uname{font-size:12px;font-weight:700;color:rgba(243,241,234,.75);padding:2px 0;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.uname:active{color:var(--sun)}
+.rpill{display:inline-flex;align-items:center;gap:5px;max-width:220px;padding:3px 10px 3px 7px;border-radius:999px;font-size:11px;font-weight:700;color:var(--fg);background:rgba(0,0,0,.38);border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);text-shadow:none;transition:transform .15s var(--out),background .2s}
+.rpill svg{width:12px;height:12px;flex:none;color:var(--mint)}
+.rpill span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.rpill.has{background:rgba(95,227,192,.16);border-color:rgba(95,227,192,.45)}
+.rpill.on{background:rgba(95,227,192,.28);border-color:var(--mint)}
+.rpill:active{transform:scale(.95)}
+.prof .un{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--muted);margin-top:-6px;padding:3px 9px;border-radius:999px;background:var(--panel);transition:color .2s}
+.prof .un:active{color:var(--sun)}
+.prof .un svg{opacity:.7}
+
+/* saved accounts on the login screen */
+.saved{display:flex;flex-direction:column;gap:6px}
+.saved .mhead{margin:0 0 2px}
+.slist{display:flex;flex-direction:column;gap:6px}
+.srow{display:flex;align-items:center;gap:6px;animation:rise .45s var(--out) both;animation-delay:calc(var(--i) * 50ms)}
+.sgo{flex:1;min-width:0;display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;background:var(--panel);border:1px solid var(--line);text-align:left;transition:transform .15s var(--out),border-color .2s}
+.sgo:hover{border-color:var(--sun)}.sgo:active{transform:scale(.98)}
+.sgo .it{flex:1;min-width:0;display:flex;flex-direction:column}
+.sgo b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sgo small{color:var(--muted);font-size:12px}
+.sgo .go{font-size:12px;font-weight:800;color:#111;background:var(--sun);padding:5px 10px;border-radius:999px}
+.srow.busy .go{animation:breathe .8s ease-in-out infinite}
+.pav.sm2{width:40px;height:40px;font-size:15px}
+.sx{width:34px;height:34px;border-radius:50%;color:var(--muted);font-size:18px;flex:none}
+
+/* video banners */
+.banner,.bnprev{overflow:hidden}
+.bnvid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
+.bnprev{position:relative}
+.banner .bnedit{z-index:2}
+.banner::after{z-index:1}
+.soundpg .row label.ghost,.form .row label.ghost{flex:1;font-weight:800;padding:11px;border-radius:12px;font-size:13px}

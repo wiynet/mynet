@@ -7,7 +7,35 @@ const LOGIN_DOMAIN = 'melk.mestario.top';    // ник превращается 
 const PAGE = 12;
 const MAX_MB = 50;
 
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
+const AUTH_KEY = 'melk-auth', ACCOUNTS_KEY = 'melk-accounts';
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (_) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (_) { } },
+  del(k) { try { localStorage.removeItem(k); } catch (_) { } }
+};
+// move a session saved by older versions of the site under Melk's own key
+if (!store.get(AUTH_KEY)) { const legacy = store.get('sb-nbjaysdarixncuumjarc-auth-token'); if (legacy) store.set(AUTH_KEY, legacy); }
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, storageKey: AUTH_KEY, storage: { getItem: k => store.get(k), setItem: (k, v) => store.set(k, v), removeItem: k => store.del(k) } } });
+/* accounts remembered on this device: tap to come back without typing the password */
+const accounts = {
+  all() { try { return JSON.parse(store.get(ACCOUNTS_KEY) || '[]'); } catch (_) { return []; } },
+  save(list) { store.set(ACCOUNTS_KEY, JSON.stringify(list.slice(0, 8))); },
+  remember(session, prof) {
+    if (!session?.user || !session.refresh_token) return;
+    const list = accounts.all().filter(a => a.uid !== session.user.id), old = accounts.all().find(a => a.uid === session.user.id) || {};
+    list.unshift({ uid: session.user.id, refresh: session.refresh_token, username: prof?.username || old.username || '', name: prof?.name || old.name || '', avatar_path: prof?.avatar_path ?? old.avatar_path ?? null, at: Date.now() });
+    accounts.save(list);
+  },
+  forget(uid) { accounts.save(accounts.all().filter(a => a.uid !== uid)); }
+};
+sb.auth.onAuthStateChange((ev, session) => { if (session && (ev === 'SIGNED_IN' || ev === 'TOKEN_REFRESHED' || ev === 'INITIAL_SESSION')) accounts.remember(session, S.me && S.me.id === session.user.id ? S.me : null); });
+async function switchTo(acc) {
+  const { data, error } = await sb.auth.refreshSession({ refresh_token: acc.refresh });
+  if (error || !data.session) { accounts.forget(acc.uid); toast('Вход устарел. Войдите паролем ещё раз.'); return false; }
+  return true;
+}
+// leaving keeps the account remembered on this device (the session is not revoked)
+async function leaveAccount() { const { data: { session } } = await sb.auth.getSession(); if (session) accounts.remember(session, S.me); store.del(AUTH_KEY); location.replace(location.pathname); }
 
 /* ---------- helpers ---------- */
 const $ = id => document.getElementById(id);
@@ -72,8 +100,10 @@ const BANNERS = {
   g4: 'linear-gradient(160deg,#0f2027,#2c5364)', g5: 'radial-gradient(circle at 20% 30%,#ff4f6d 0 18%,transparent 19%),radial-gradient(circle at 75% 60%,#5fe3c0 0 22%,transparent 23%),radial-gradient(circle at 50% 10%,#ffc93c 0 10%,transparent 11%),#171a22',
   g6: 'repeating-linear-gradient(45deg,#ffc93c 0 14px,#171a22 14px 28px)', g7: 'linear-gradient(120deg,#8e2de2,#4a00e0)', g8: 'conic-gradient(from 200deg at 70% 40%,#ff4f6d,#ffc93c,#5fe3c0,#2b6cff,#ff4f6d)'
 };
+function bannerMedia(P) { const b = P?.banner || ''; return b.startsWith('vid:') ? `<video class="bnvid" autoplay muted loop playsinline preload="auto" src="${esc(videoUrl(b.slice(4)))}"></video>` : ''; }
 function bannerStyle(P) {
   const b = P?.banner || '';
+  if (b.startsWith('vid:')) return `background:linear-gradient(135deg,${color(P?.id)},#171a22)`;
   if (b.startsWith('img:')) return `background-image:url('${esc(avatarUrl(b.slice(4)))}');background-size:cover;background-position:center`;
   return `background:${BANNERS[b] || `linear-gradient(135deg,${color(P?.id)},#171a22)`}`;
 }
@@ -92,12 +122,19 @@ async function loadMe() {
       sb.from('melk_follows').select('followee_id').eq('follower_id', uid),
       sb.from('melk_saves').select('post_id').eq('user_id', uid)
     ]);
-    S.me = me.data; S.admin = !!adm.data;
+    S.me = me.data; S.admin = !!adm.data; accounts.remember(session, S.me);
     (fol.data || []).forEach(r => S.following.add(r.followee_id));
     (sav.data || []).forEach(r => S.saved.add(r.post_id));
   }
   $('nav-me-t').textContent = S.user ? 'Профиль' : 'Войти';
   startRealtime(); refreshUnread();
+}
+async function loadReposters(posts) {
+  const ids = posts.filter(p => p.repostCount > 0 || S.reposted.has(p.id)).map(p => p.id); if (!ids.length) return;
+  const { data } = await sb.from('melk_reposts').select('post_id,note,created_at,user_id,user:melk_profiles(username,name)').in('post_id', ids).order('created_at', { ascending: false }).limit(300);
+  const best = {};
+  (data || []).forEach(r => { const score = (S.user && r.user_id === S.user.id ? 3 : 0) + (S.following.has(r.user_id) ? 2 : 0) + (r.note ? 1 : 0); if (!best[r.post_id] || score > best[r.post_id].score) best[r.post_id] = { score, name: r.user?.name || r.user?.username, note: r.note, mine: S.user && r.user_id === S.user.id }; });
+  posts.forEach(p => { p.rpBy = best[p.id] || null; });
 }
 async function loadMine(ids) {
   if (!S.user || !ids.length) return;
@@ -114,6 +151,7 @@ function openAuth(why, mode = 'in') {
   const body = document.createElement('div'); body.className = 'form';
   body.innerHTML = `
     <div class="hero"><div class="logo">мельк</div><p>Короткие видео от людей вокруг тебя</p></div>
+    <div class="saved" id="a-saved" hidden><p class="mhead">Войти как</p><div class="slist"></div></div>
     ${why ? `<p class="why">${esc(why)}</p>` : ''}
     <div class="seg" role="tablist"><button data-m="in">Вход</button><button data-m="up">Регистрация</button></div>
     <form id="auth-form" class="form" style="padding:0" novalidate>
@@ -125,6 +163,18 @@ function openAuth(why, mode = 'in') {
       <p class="hint" id="a-hint"></p>
     </form>`;
   page('Аккаунт', body, '#login');
+  const saved = accounts.all().filter(a => a.uid !== S.user?.id), sbox = body.querySelector('#a-saved');
+  if (saved.length) {
+    sbox.hidden = false;
+    saved.forEach((a, i) => {
+      const row = document.createElement('div'); row.className = 'srow'; row.style.setProperty('--i', i);
+      row.innerHTML = `<button class="sgo"><span class="pav sm2" style="${avStyle(a, a.uid)}">${avText({ ...a, id: a.uid })}</span><span class="it"><b></b><small></small></span><span class="go">Войти</span></button><button class="sx" aria-label="Забыть аккаунт">×</button>`;
+      row.querySelector('b').textContent = a.name || a.username; row.querySelector('small').textContent = '@' + a.username;
+      row.querySelector('.sgo').onclick = async () => { row.classList.add('busy'); if (await switchTo(a)) { closeTop(); await onAuthChanged(); toast('Вы вошли как ' + (a.name || a.username)); } else row.remove(); };
+      row.querySelector('.sx').onclick = () => { accounts.forget(a.uid); row.remove(); if (!sbox.querySelector('.srow')) sbox.hidden = true; };
+      sbox.querySelector('.slist').appendChild(row);
+    });
+  }
   const form = body.querySelector('#auth-form'), err = body.querySelector('#a-err'), go = body.querySelector('#a-go');
   const set = m => {
     mode = m; body.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-selected', b.dataset.m === m));
@@ -443,12 +493,16 @@ function startSynth(el) { stopSynth(el); const p = POSTS.get(el.dataset.id); con
 let io;
 async function fetchPosts(from) {
   let q = sb.from('melk_posts').select(POST_SELECT).order('created_at', { ascending: false }).range(from, from + PAGE - 1);
-  if (F.tab === 'follow') { const ids = [...S.following]; if (!ids.length) return []; q = q.in('author_id', ids); }
+  if (F.tab === 'follow') {
+    const ids = [...S.following]; if (!ids.length) return [];
+    if (!F.followReposts) { const { data } = await sb.from('melk_reposts').select('post_id').in('user_id', ids).order('created_at', { ascending: false }).limit(200); F.followReposts = [...new Set((data || []).map(r => r.post_id))]; }
+    q = F.followReposts.length ? q.or(`author_id.in.(${ids.join(',')}),id.in.(${F.followReposts.join(',')})`) : q.in('author_id', ids);
+  }
   const { data, error } = await q; if (error) throw error;
   return data.map(normPost);
 }
 async function reloadFeed(focusId) {
-  F.posts = []; F.done = false; POSTS.clear();
+  F.posts = []; F.done = false; POSTS.clear(); F.followReposts = null;
   if (io) io.disconnect(); feed.querySelectorAll('video').forEach(v => v.pause());
   feed.innerHTML = '<div class="loader"><div class="lg">мельк</div><div class="bars"><i></i><i></i><i></i></div></div>'; F.active = null;
   try {
@@ -458,7 +512,7 @@ async function reloadFeed(focusId) {
     F.posts = first.concat(page.filter(p => !first.some(f => f.id === p.id)));
     F.done = page.length < PAGE;
   } catch (e) { feed.innerHTML = '<div class="empty"><h2>Лента не загрузилась</h2><p>Проверьте интернет и обновите страницу.</p></div>'; console.error(e); return; }
-  await loadMine(F.posts.map(p => p.id));
+  await loadMine(F.posts.map(p => p.id)); await loadReposters(F.posts).catch(() => { });
   feed.innerHTML = '';
   if (!F.posts.length) return renderEmpty();
   io = { observe() { }, disconnect() { } };
@@ -477,7 +531,7 @@ async function loadMore() {
   try {
     const page = await fetchPosts(F.posts.filter(p => !p._pinned).length);
     const fresh = page.filter(p => !POSTS.has(p.id));
-    F.done = page.length < PAGE; await loadMine(fresh.map(p => p.id));
+    F.done = page.length < PAGE; await loadMine(fresh.map(p => p.id)); await loadReposters(fresh).catch(() => { });
     fresh.forEach(p => { F.posts.push(p); appendSlide(p); });
   } catch (e) { console.error(e); }
   F.loading = false;
@@ -500,10 +554,13 @@ function slide(p) {
     <button class="act sh">${ICON.share}<span>Отправить</span></button>
     <div class="disc" style="${avStyle(p.author, p.author_id)}"></div>
   </div>
-  <div class="info"><button class="handle"></button><div class="cap">${capHTML(p.caption)}</div>
+  <div class="info"><div class="who2"><button class="handle"></button><div class="subline"><button class="uname" title="Скопировать ник"></button><button class="rpill"></button></div></div><div class="cap">${capHTML(p.caption)}</div>
     <button class="sound" aria-label="Звук"><span class="eqz"><i></i><i></i><i></i></span><b>${esc(soundName(p))} · ${esc(soundName(p))}</b></button><div class="when">${ago(p.created_at)}</div>${mine ? `<button class="editbar">${ICON_EDIT}<span>Изменить ролик</span></button>` : ''}</div>
   <div class="progress"><i></i></div>`;
-  el.querySelector('.handle').textContent = '@' + (p.author?.username || 'user');
+  el.querySelector('.handle').textContent = p.author?.name || p.author?.username || 'user';
+  el.querySelector('.uname').textContent = '@' + (p.author?.username || 'user');
+  el.querySelector('.uname').onclick = e => { e.stopPropagation(); copy('@' + (p.author?.username || ''), 'Ник скопирован'); };
+  el.querySelector('.rpill').onclick = e => { e.stopPropagation(); if (!needLogin('Войдите, чтобы делать репосты.')) openRepost(p); };
   if (p.author?.is_bot) el.querySelector('.handle').insertAdjacentHTML('beforeend', ' <span class="botchip">ИИ-бот</span>');
   if (p.kind === 'gen') { const cv = el.querySelector('canvas.gen'); requestAnimationFrame(() => { sizeCanvas(cv); try { genFrame(cv, p.gen, 2); } catch (_) { } }); }
   const v = el.querySelector('.stage video') || document.createElement('video');
@@ -533,6 +590,10 @@ function slide(p) {
 function fillSlide(el, p) {
   const lk = el.querySelector('.like'); lk.classList.toggle('liked', S.liked.has(p.id)); setCount(lk.querySelector('span'), fmt(p.likeCount), p.likeCount);
   setCount(el.querySelector('.cm span'), fmt(p.commentCount), p.commentCount);
+  const pill = el.querySelector('.rpill');
+  if (pill) { const by = p.rpBy; pill.classList.toggle('on', S.reposted.has(p.id)); pill.classList.toggle('has', !!by);
+    pill.innerHTML = ICON.repost + '<span></span>';
+    pill.querySelector('span').textContent = S.reposted.has(p.id) ? (by && by.mine && by.note ? `Ваш репост: «${by.note}»` : 'Ваш репост · заметка') : by ? `${by.name}${by.note ? ': «' + by.note + '»' : ' репостнул(а)'}` : 'Репост с заметкой'; }
   const rp = el.querySelector('.rp'); rp.classList.toggle('reposted', S.reposted.has(p.id)); setCount(rp.querySelector('span'), p.repostCount ? fmt(p.repostCount) : 'Репост', p.repostCount);
   const sv = el.querySelector('.sv'), saved = S.saved.has(p.id); sv.classList.toggle('saved', saved); sv.querySelector('span').textContent = saved ? 'В избранном' : 'Сохранить';
   const f = el.querySelector('.follow');
@@ -619,12 +680,13 @@ async function openRepost(p) {
     const { error } = on ? await sb.from('melk_reposts').update({ note }).eq('post_id', p.id).eq('user_id', S.user.id)
                          : await sb.from('melk_reposts').insert({ post_id: p.id, user_id: S.user.id, note });
     go.disabled = false; if (error && error.code !== '23505') return dbErr(error);
+    p.rpBy = { name: S.me?.name || S.me?.username, note, mine: true, score: 9 };
     if (!on) { S.reposted.add(p.id); p.repostCount++; refreshSlides(); feed.querySelectorAll(`[data-id="${p.id}"] .rp`).forEach(b => { replay(b, 'pop'); sparks(b, 'var(--mint)'); }); }
-    closeSheet(); toast(on ? 'Заметка сохранена' : 'Репост в вашем профиле');
+    refreshSlides(); closeSheet(); toast(on ? 'Заметка сохранена' : 'Репост в вашем профиле');
   };
   body.querySelector('#rp-del')?.addEventListener('click', async () => {
     const { error } = await sb.from('melk_reposts').delete().eq('post_id', p.id).eq('user_id', S.user.id); if (error) return dbErr(error);
-    S.reposted.delete(p.id); p.repostCount = Math.max(0, p.repostCount - 1); refreshSlides(); closeSheet(); toast('Репост убран');
+    S.reposted.delete(p.id); p.repostCount = Math.max(0, p.repostCount - 1); if (p.rpBy?.mine) p.rpBy = null; refreshSlides(); closeSheet(); toast('Репост убран');
   });
 }
 
@@ -1114,16 +1176,18 @@ async function bannerJpeg(file) {
 }
 function openBannerPicker(P, redraw) {
   const body = document.createElement('div'); body.className = 'form';
-  body.innerHTML = `<div class="bnprev" style="${bannerStyle(P)}"></div>
+  body.innerHTML = `<div class="bnprev" style="${bannerStyle(P)}">${bannerMedia(P)}</div>
     <div class="swatches">${Object.keys(BANNERS).map(k => `<button class="swatch${P.banner === k ? ' on' : ''}" data-b="${k}" style="background:${BANNERS[k]}" aria-label="Фон ${k.slice(1)}"></button>`).join('')}</div>
-    <label class="ghost" for="bn-file" style="text-align:center">${ICON.camera} Своя картинка<input type="file" id="bn-file" accept="image/jpeg,image/png,image/webp,image/*" hidden></label>
+    <div class="row"><label class="ghost" for="bn-file">${ICON.camera} Картинка<input type="file" id="bn-file" accept="image/jpeg,image/png,image/webp,image/*" hidden></label>
+    <label class="ghost" for="bn-vid">${ICON.play} Видео до 10 с<input type="file" id="bn-vid" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v" hidden></label></div>
+    <p class="err" id="bn-err" hidden></p>
     ${P.banner ? '<button class="linkbtn" id="bn-reset">Вернуть обычный фон</button>' : ''}`;
   sheet('Фон профиля', body);
   const set = async val => {
     const old = P.banner; const { error } = await sb.from('melk_profiles').update({ banner: val }).eq('id', P.id);
     if (error) return dbErr(error);
-    if (old && old.startsWith('img:') && old !== val) sb.storage.from(AVATARS).remove([old.slice(4)]);
-    P.banner = val; if (S.me) S.me.banner = val; body.querySelector('.bnprev').setAttribute('style', bannerStyle(P)); replay(body.querySelector('.bnprev'), 'pop');
+    if (old && old !== val) { if (old.startsWith('img:')) sb.storage.from(AVATARS).remove([old.slice(4)]); if (old.startsWith('vid:')) sb.storage.from(BUCKET).remove([old.slice(4)]); }
+    P.banner = val; if (S.me) S.me.banner = val; const pv = body.querySelector('.bnprev'); pv.setAttribute('style', bannerStyle(P)); pv.innerHTML = bannerMedia(P); replay(body.querySelector('.bnprev'), 'pop');
     body.querySelectorAll('.swatch').forEach(s => s.classList.toggle('on', s.dataset.b === val)); redraw(); toast('Фон обновлён');
   };
   body.querySelectorAll('.swatch').forEach(b => b.onclick = () => set(b.dataset.b));
@@ -1135,6 +1199,20 @@ function openBannerPicker(P, redraw) {
     const up = await sb.storage.from(AVATARS).upload(path, blob, { contentType: 'image/jpeg', cacheControl: '31536000' });
     if (up.error) return dbErr(up.error);
     set('img:' + path);
+  };
+  body.querySelector('#bn-vid').onchange = async e => {
+    const f = e.target.files[0], er = body.querySelector('#bn-err'); if (!f) return; er.hidden = true;
+    const fail = t => { er.textContent = t; er.hidden = false; };
+    const type = pickVideoType(f); if (!type) return fail('Нужно видео MP4, WebM или MOV.');
+    if (f.size > 20 * 1048576) return fail('Видео для фона должно весить до 20 МБ.');
+    const dur = await new Promise(res => { const v = document.createElement('video'); v.preload = 'metadata'; v.muted = true; v.onloadedmetadata = () => { res(v.duration); URL.revokeObjectURL(v.src); }; v.onerror = () => res(NaN); v.src = URL.createObjectURL(f); });
+    if (!isFinite(dur)) return fail('Не получилось прочитать это видео. Попробуйте MP4.');
+    if (dur > 10.5) return fail(`Видео длится ${Math.round(dur)} с, а для фона можно до 10 секунд. Обрежьте его.`);
+    toast('Загружаем видео для фона…');
+    const ext = type === 'video/webm' ? 'webm' : type === 'video/quicktime' ? 'mov' : 'mp4', path = `${S.user.id}/banner-${Date.now()}.${ext}`;
+    const up = await sb.storage.from(BUCKET).upload(path, f, { contentType: type, cacheControl: '31536000' });
+    if (up.error) return fail('Видео не загрузилось. Попробуйте ещё раз.');
+    set('vid:' + path);
   };
 }
 
@@ -1157,7 +1235,9 @@ function openProfileMenu(P, me, redraw) {
     toggle('Комментарии к моим видео', 'Если выключить, новые комментарии никто не сможет оставить', 'allow_comments');
     const h2 = document.createElement('p'); h2.className = 'mhead'; h2.textContent = 'Аккаунт'; body.appendChild(h2);
     item('Скопировать ссылку на профиль', '', () => copy(location.origin + location.pathname + '#@' + P.username, 'Ссылка на профиль скопирована'));
-    item('Выйти из аккаунта', '', async () => { closeSheet(); await sb.auth.signOut(); closeAll(); await onAuthChanged(); toast('Вы вышли из аккаунта'); }, 'danger');
+    item('Сменить аккаунт', 'Войти в другой аккаунт, этот останется сохранённым', () => { closeSheet(); openAuth(); });
+    item('Выйти из аккаунта', 'Аккаунт останется на этом устройстве, войти обратно можно в одно касание', () => { closeSheet(); leaveAccount(); }, 'danger');
+    item('Выйти и забыть это устройство', '', async () => { closeSheet(); accounts.forget(S.user.id); await sb.auth.signOut({ scope: 'local' }); location.replace(location.pathname); }, 'danger');
   } else {
     item('Написать', '', () => { closeSheet(); openChatWith(P.id, P); });
     item('Скопировать ссылку на профиль', '', () => { closeSheet(); copy(location.origin + location.pathname + '#@' + P.username, 'Ссылка на профиль скопирована'); });
@@ -1209,13 +1289,14 @@ async function openProfile(uid) {
   }
   function draw() {
     const tabs = tabsFor(); if (!tabs.some(t => t[0] === tab)) tab = 'posts';
-    body.innerHTML = `<div class="banner" style="${bannerStyle(P)}">${me ? '<button class="bnedit" id="pf-bn">' + ICON.camera + ' Фон</button>' : ''}</div><div class="avwrap"><div class="avatar big" style="${avStyle(P, P.id)}">${avText(P)}</div>${me ? `<label class="avedit" for="pf-av" aria-label="Сменить аватарку">${ICON.camera}<input type="file" id="pf-av" accept="image/jpeg,image/png,image/webp,image/*" hidden></label>` : ''}</div>
-    <div class="nm"></div><div class="un"></div><p class="bio"></p>
+    body.innerHTML = `<div class="banner" style="${bannerStyle(P)}">${bannerMedia(P)}${me ? '<button class="bnedit" id="pf-bn">' + ICON.camera + ' Фон</button>' : ''}</div><div class="avwrap"><div class="avatar big" style="${avStyle(P, P.id)}">${avText(P)}</div>${me ? `<label class="avedit" for="pf-av" aria-label="Сменить аватарку">${ICON.camera}<input type="file" id="pf-av" accept="image/jpeg,image/png,image/webp,image/*" hidden></label>` : ''}</div>
+    <div class="nm"></div><button class="un" title="Скопировать ник"></button><p class="bio"></p>
     <div class="stats"><div><b>${fmt(followerCount)}</b>подписчики</div><div><b>${fmt(fing.count || 0)}</b>подписки</div><div><b>${fmt(likesGot)}</b>лайки</div></div>
     <div class="row" id="pf-actions"></div><div id="pf-edit" style="width:100%"></div>
     <div class="ptabs" role="tablist">${tabs.map(t => `<button data-t="${t[0]}">${t[1]}${me && ((t[0] === 'liked' && !P.show_likes) || (t[0] === 'saved' && !P.show_saves)) ? ' ' + ICON.lock : ''}</button>`).join('')}</div>
     <div class="grid"></div>`;
-    body.querySelector('.nm').textContent = P.name; body.querySelector('.un').textContent = '@' + P.username;
+    body.querySelector('.nm').textContent = P.name; body.querySelector('.un').innerHTML = '<span></span><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>';
+    body.querySelector('.un span').textContent = '@' + P.username; body.querySelector('.un').onclick = () => copy('@' + P.username, 'Ник скопирован');
     if (P.is_bot) body.querySelector('.un').insertAdjacentHTML('beforeend', ' <span class="botchip">ИИ-бот</span>');
     const bio = body.querySelector('.bio'); bio.textContent = P.bio || (me ? 'Добавьте пару слов о себе.' : ''); bio.hidden = !bio.textContent;
     const avIn = body.querySelector('#pf-av');
