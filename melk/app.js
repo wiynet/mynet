@@ -174,16 +174,57 @@ let lastPoint = null;
 document.addEventListener('pointerdown', e => { lastPoint = { x: e.clientX, y: e.clientY, t: Date.now() }; }, true);
 function originIn(el) { const r = el.getBoundingClientRect(); if (lastPoint && Date.now() - lastPoint.t < 800) return { x: lastPoint.x - r.left, y: lastPoint.y - r.top }; return { x: r.width - 40, y: r.height - 32 }; }
 
-let depthRaf = 0;
-feed.addEventListener('scroll', () => { if (!RM && !depthRaf) depthRaf = requestAnimationFrame(depth); }, { passive: true });
+let depthRaf = 0, lastTop = 0, scrollDir = 1, settleT;
+feed.addEventListener('scroll', () => {
+  if (!depthRaf) depthRaf = requestAnimationFrame(depth);
+  clearTimeout(settleT); settleT = setTimeout(settle, 90);
+}, { passive: true });
 function depth() {
-  depthRaf = 0; const h = feed.clientHeight || 1, top = feed.scrollTop, i0 = Math.floor(top / h);
+  depthRaf = 0; const h = feed.clientHeight || 1, top = feed.scrollTop;
+  if (top !== lastTop) { scrollDir = top > lastTop ? 1 : -1; lastTop = top; }
+  const i0 = Math.floor(top / h);
+  feed.querySelectorAll('.slide.moving').forEach(el => { const k = [...feed.children].indexOf(el); if (k < i0 - 1 || k > i0 + 2) clear(el); });
   for (let i = Math.max(0, i0 - 1); i <= i0 + 2; i++) {
     const el = feed.children[i]; if (!el || !el.classList.contains('slide')) continue;
-    const p = (el.offsetTop - top) / h, a = Math.min(1, Math.max(0, -p)), b = Math.min(1, Math.max(0, p));
-    el.style.setProperty('--a', a.toFixed(4)); el.style.setProperty('--b', b.toFixed(4));
+    const p = (el.offsetTop - top) / h; // <0 above the screen, >0 below
+    if (RM || Math.abs(p) < .001 || Math.abs(p) >= 1) { clear(el); continue; }
+    // the slide being left sinks back, the slide coming in stays flat and on top
+    const leaving = scrollDir > 0 ? p < 0 : p > 0, k = Math.min(1, Math.abs(p));
+    el.classList.add('moving');
+    if (leaving) {
+      el.style.zIndex = '1'; el.style.transformOrigin = scrollDir > 0 ? '50% 0' : '50% 100%';
+      el.style.transform = `translateY(${scrollDir * k * 38}%) scale(${1 - k * .12})`;
+      el.style.borderRadius = (k * 34) + 'px'; el.style.filter = `brightness(${1 - k * .6})`;
+      el.style.setProperty('--b', '0');
+    } else {
+      el.style.zIndex = '2'; el.style.transform = ''; el.style.borderRadius = ''; el.style.filter = '';
+      el.style.setProperty('--b', k.toFixed(4)); el.style.setProperty('--dir', String(scrollDir));
+    }
   }
 }
+function clear(el) { el.classList.remove('moving'); el.style.zIndex = ''; el.style.transform = ''; el.style.borderRadius = ''; el.style.filter = ''; el.style.setProperty('--b', '0'); }
+function currentIndex() { const h = feed.clientHeight || 1; return Math.round(feed.scrollTop / h); }
+function settle() {
+  const el = feed.children[currentIndex()];
+  if (el && el.classList.contains('slide')) activate(el);
+}
+function go(delta) {
+  const n = feed.children.length; if (!n || !feed.firstElementChild?.classList.contains('slide')) return;
+  const k = Math.max(0, Math.min(n - 1, currentIndex() + delta)); if (k === currentIndex()) { replay(feed, delta > 0 ? 'bump-down' : 'bump-up'); return; }
+  feed.scrollTo({ top: k * feed.clientHeight, behavior: RM ? 'auto' : 'smooth' });
+}
+/* keyboard: space pauses, arrows and W A S D flip videos, M mutes, L likes */
+document.addEventListener('keydown', e => {
+  if (e.target.closest && e.target.closest('input,textarea,select,[contenteditable]')) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (sheetEls.length || pages.length) { if (e.key === 'Escape') { if (sheetEls.length) closeSheet(); else closeTop(); } return; }
+  const k = e.key.toLowerCase(), code = e.code;
+  if (code === 'Space' || k === 'k') { e.preventDefault(); togglePause(); if (F.active) replay(F.active.querySelector('.playicon'), 'tap'); return; }
+  if (k === 'arrowdown' || k === 'arrowright' || code === 'KeyS' || code === 'KeyD') { e.preventDefault(); go(1); return; }
+  if (k === 'arrowup' || k === 'arrowleft' || code === 'KeyW' || code === 'KeyA') { e.preventDefault(); go(-1); return; }
+  if (code === 'KeyM') { F.muted = !F.muted; applyMute(); toast(F.muted ? 'Звук выключен' : 'Звук включён'); return; }
+  if (code === 'KeyL' && F.active) { const p = POSTS.get(F.active.dataset.id); if (p && !needLogin('Войдите, чтобы ставить лайки.')) toggleLike(p); }
+});
 
 function confetti() {
   if (RM) return;
@@ -260,9 +301,9 @@ async function reloadFeed(focusId) {
   await loadMine(F.posts.map(p => p.id));
   feed.innerHTML = '';
   if (!F.posts.length) return renderEmpty();
-  io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) activate(e.target); }), { root: feed, threshold: .6 });
+  io = { observe() { }, disconnect() { } };
   F.posts.forEach(appendSlide);
-  depth();
+  lastTop = feed.scrollTop; depth(); settle();
 }
 function renderEmpty() {
   const follow = F.tab === 'follow';
@@ -296,11 +337,10 @@ function slide(p) {
     <button class="act rp">${ICON.repost}<span></span></button>
     <button class="act sv">${ICON.save}<span></span></button>
     <button class="act sh">${ICON.share}<span>Отправить</span></button>
-    ${mine ? `<button class="act ed">${ICON_EDIT}<span>Изменить</span></button>` : ''}
     <div class="disc" style="${avStyle(p.author, p.author_id)}"></div>
   </div>
   <div class="info"><button class="handle"></button><div class="cap">${capHTML(p.caption)}</div>
-    <button class="sound" aria-label="Звук"><span class="eqz"><i></i><i></i><i></i></span><b>${esc(soundName(p))} · ${esc(soundName(p))}</b></button><div class="when">${ago(p.created_at)}</div></div>
+    <button class="sound" aria-label="Звук"><span class="eqz"><i></i><i></i><i></i></span><b>${esc(soundName(p))} · ${esc(soundName(p))}</b></button><div class="when">${ago(p.created_at)}</div>${mine ? `<button class="editbar">${ICON_EDIT}<span>Изменить ролик</span></button>` : ''}</div>
   <div class="progress"><i></i></div>`;
   el.querySelector('.handle').textContent = '@' + (p.author?.username || 'user');
   const v = el.querySelector('video');
@@ -317,7 +357,7 @@ function slide(p) {
   el.querySelector('.cm').onclick = () => openComments(p);
   el.querySelector('.rp').onclick = () => { if (!needLogin('Войдите, чтобы делать репосты.')) openRepost(p); };
   el.querySelector('.sound').onclick = () => openSound(p);
-  el.querySelector('.ed')?.addEventListener('click', () => openEdit(p));
+  el.querySelector('.editbar')?.addEventListener('click', e => { e.stopPropagation(); openEdit(p); });
   if (p.sound_src && p.sound_src.id !== p.id) { const a = document.createElement('audio'); a.className = 'aux'; a.loop = true; a.preload = 'none'; a.src = videoUrl(p.sound_src.video_path); el.appendChild(a); el.dataset.borrowed = '1'; }
   el.querySelector('.sv').onclick = () => { if (!needLogin('Войдите, чтобы сохранять ролики.')) toggleSave(p); };
   el.querySelector('.sh').onclick = () => openShare(p);

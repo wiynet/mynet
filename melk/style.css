@@ -596,3 +596,18 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,.tile:focus-visi
 .swatch.on{box-shadow:0 0 0 3px var(--sun)}
 label.ghost{cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px}
 label.ghost svg{width:18px;height:18px}
+
+/* ================= v4: swipe fix, keyboard, edit bar ================= */
+.slide{transform:none;border-radius:0;filter:none;will-change:auto}
+.slide.moving{will-change:transform,filter}
+.slide .info{transform:translateY(calc(var(--b) * var(--dir, 1) * 70px))}
+.editbar{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;max-width:340px;margin-top:6px;padding:11px 14px;border-radius:12px;background:rgba(23,26,34,.72);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.14);font-weight:800;font-size:14px;text-shadow:none;transition:transform .15s var(--out),background .2s}
+.editbar svg{width:17px;height:17px;color:var(--sun)}
+.editbar:hover{background:rgba(23,26,34,.9)}
+.editbar:active{transform:scale(.97)}
+.playicon.tap svg{animation:tapico .45s var(--spring)}
+@keyframes tapico{0%{transform:scale(.6)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+.feed.bump-down{animation:bumpd .35s var(--out)}
+.feed.bump-up{animation:bumpu .35s var(--out)}
+@keyframes bumpd{40%{transform:translateY(-18px)}}
+@keyframes bumpu{40%{transform:translateY(18px)}}
