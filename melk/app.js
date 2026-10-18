@@ -64,7 +64,7 @@ const S = { user: null, me: null, admin: false, liked: new Set(), saved: new Set
 const F = { tab: 'fy', posts: [], done: false, loading: false, active: null, paused: false, muted: false };
 const POSTS = new Map(); // id -> post
 const PROFILE_COLS = 'id,username,name,bio,avatar_path,show_likes,show_saves,allow_comments,banner,is_bot';
-const POST_SELECT = 'id,video_path,caption,sound,sound_post_id,created_at,author_id,like_count,comment_count,repost_count,sound_src:sound_post_id(id,video_path,kind,gen),author:melk_profiles!melk_posts_author_id_fkey(id,username,name,avatar_path,allow_comments,is_bot)';
+const POST_SELECT = 'id,kind,gen,video_path,caption,sound,sound_post_id,created_at,author_id,like_count,comment_count,repost_count,sound_src:sound_post_id(id,video_path,kind,gen),author:melk_profiles!melk_posts_author_id_fkey(id,username,name,avatar_path,allow_comments,is_bot)';
 const soundName = p => (!p.sound || p.sound === 'Оригинальный звук') && !p.sound_post_id ? `Оригинальный звук — @${p.author?.username || 'user'}` : p.sound;
 const ICON_EDIT = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 17.3V20h2.7l9.9-9.9-2.7-2.7zM19.7 7a1 1 0 0 0 0-1.4l-1.3-1.3a1 1 0 0 0-1.4 0l-1.6 1.6 2.7 2.7z"/></svg>';
 const BANNERS = {
