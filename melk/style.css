@@ -694,3 +694,21 @@ mark{background:rgba(255,201,60,.3);color:var(--fg);border-radius:3px;padding:0 
 .sload i{width:6px;border-radius:3px;background:var(--sun);animation:eq .9s ease-in-out infinite}
 .sload i:nth-child(2){animation-delay:.15s;background:var(--mint)}.sload i:nth-child(3){animation-delay:.3s;background:var(--heart)}
 .cap .tag{cursor:pointer}
+
+/* ================= v8: small sound button, chat search ================= */
+.mute{left:12px;right:auto;top:calc(42px + env(safe-area-inset-top,0px));width:34px;height:34px;padding:0;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.42);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.14);touch-action:none;overflow:visible;transition:transform .2s var(--spring),background .2s}
+.mute svg{width:17px;height:17px}
+.mute.off{color:var(--heart)}
+.mute:active{transform:scale(.9)}
+.mute .vol{position:absolute;left:40px;top:50%;width:90px;height:6px;margin-top:-3px;border-radius:3px;background:rgba(255,255,255,.22);opacity:0;transform:scaleX(.4);transform-origin:0 50%;transition:opacity .2s,transform .25s var(--spring);pointer-events:none}
+.mute .vol::after{content:"";position:absolute;inset:0;width:calc(var(--v) * 100%);border-radius:3px;background:var(--sun);box-shadow:0 0 8px rgba(255,201,60,.6)}
+.mute.dragging{background:rgba(0,0,0,.65);transform:scale(1.08)}
+.mute.dragging .vol{opacity:1;transform:none}
+.genchip{left:auto;right:12px;top:calc(56px + env(safe-area-inset-top,0px))}
+.inbox .sbar{margin-bottom:4px}
+.irow.mrow{position:relative}
+.irow .mt{position:absolute;right:8px;top:12px;font-size:11px;color:var(--muted)}
+.irow.mrow b{padding-right:70px}
+.irow small mark{color:var(--fg)}
+.msg.hit .txt{animation:hit 2.2s ease}
+@keyframes hit{0%,40%{box-shadow:0 0 0 3px var(--mint)}100%{box-shadow:0 0 0 0 transparent}}

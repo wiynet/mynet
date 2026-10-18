@@ -265,6 +265,7 @@ function go(delta) {
 }
 /* keyboard: space pauses, arrows and W A S D flip videos, M mutes, L likes */
 document.addEventListener('keydown', e => {
+  if (e.key === 'AudioVolumeUp' || e.key === 'AudioVolumeDown' || e.key === 'VolumeUp' || e.key === 'VolumeDown') { if (F.muted) { F.muted = false; if (F.volume === 0) F.volume = .6; applyMute(); toast('Звук включён'); } return; }
   if (e.target.closest && e.target.closest('input,textarea,select,[contenteditable]')) return;
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   if (sheetEls.length || pages.length) { if (e.key === 'Escape') { if (sheetEls.length) closeSheet(); else closeTop(); } return; }
@@ -474,7 +475,7 @@ function audioCtx() { if (!AC) { try { AC = new (window.AudioContext || window.w
 ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, () => { if (AC && AC.state === 'suspended') AC.resume().catch(() => { }); }, true));
 function genMusic(g) {
   const ac = audioCtx(); if (!ac || !g) return null;
-  const r = rng((g.seed || 1) + 7), master = ac.createGain(); master.gain.value = 0; master.connect(ac.destination); master.gain.linearRampToValueAtTime(.14, ac.currentTime + .8);
+  const r = rng((g.seed || 1) + 7), master = ac.createGain(); master.gain.value = 0; master.connect(ac.destination); master.gain.linearRampToValueAtTime(.14 * (F.volume ?? 1), ac.currentTime + .8);
   const scale = [0, 3, 5, 7, 10, 12, 15, 17], root = 48 + Math.floor(r() * 12), beat = 60 / (g.tempo || 90) / 2;
   const pat = Array.from({ length: 8 }, () => scale[Math.floor(r() * scale.length)]), hz = n => 440 * Math.pow(2, (n - 69) / 12);
   const pads = [0, 7, 12].map(iv => { const o = ac.createOscillator(), gg = ac.createGain(); o.type = 'sine'; o.frequency.value = hz(root + iv - 12); gg.gain.value = .045; o.connect(gg).connect(master); o.start(); return o; });
@@ -483,7 +484,7 @@ function genMusic(g) {
     const o = ac.createOscillator(), e = ac.createGain(); o.type = step % 4 === 0 ? 'triangle' : 'sine'; o.frequency.value = hz(root + 12 + pat[step % 8] + (step % 16 >= 8 ? 2 : 0));
     e.gain.setValueAtTime(0, next); e.gain.linearRampToValueAtTime(.16, next + .01); e.gain.exponentialRampToValueAtTime(.001, next + beat * 1.8);
     o.connect(e).connect(master); o.start(next); o.stop(next + beat * 2); next += beat; step++; } }, 60);
-  return { stop() { clearInterval(timer); const t = ac.currentTime; master.gain.cancelScheduledValues(t); master.gain.setValueAtTime(master.gain.value, t); master.gain.linearRampToValueAtTime(0, t + .3); setTimeout(() => { pads.forEach(o => { try { o.stop(); } catch (_) { } }); master.disconnect(); }, 450); } };
+  return { volume(v) { master.gain.setTargetAtTime(.14 * v, ac.currentTime, .05); }, stop() { clearInterval(timer); const t = ac.currentTime; master.gain.cancelScheduledValues(t); master.gain.setValueAtTime(master.gain.value, t); master.gain.linearRampToValueAtTime(0, t + .3); setTimeout(() => { pads.forEach(o => { try { o.stop(); } catch (_) { } }); master.disconnect(); }, 450); } };
 }
 /* what plays for a slide: its own video sound, a borrowed sound file, or generated music */
 function synthFor(p) { if (p.kind === 'gen') return p.gen; if (p.sound_src && p.sound_src.kind === 'gen') return p.sound_src.gen; return null; }
@@ -545,7 +546,7 @@ function slide(p) {
   el.dataset.kind = p.kind || 'video';
   el.innerHTML = `<div class="stage">${p.kind === 'gen' ? '<canvas class="gen"></canvas><span class="genchip">✦ Сгенерировано</span>' : `<video src="${esc(videoUrl(p.video_path))}" loop playsinline preload="metadata"></video>`}</div>
   <div class="shade"></div><div class="playicon">${ICON.play}</div>
-  <button class="mute">${F.muted ? 'Звук выкл.' : 'Звук вкл.'}</button>
+  <button class="mute" aria-label="Звук"></button>
   <div class="rail">
     <button class="avatar" aria-label="Профиль автора" style="${avStyle(p.author, p.author_id)}">${avText(p.author)}${mine ? '' : '<span class="follow" role="button" aria-label="Подписаться"></span>'}</button>
     <button class="act like">${ICON.heart}<span></span></button>
@@ -561,7 +562,7 @@ function slide(p) {
   el.querySelector('.handle').textContent = p.author?.name || p.author?.username || 'user';
   el.querySelector('.uname').textContent = '@' + (p.author?.username || 'user');
   el.querySelector('.uname').onclick = e => { e.stopPropagation(); copy('@' + (p.author?.username || ''), 'Ник скопирован'); };
-  el.querySelector('.rpill').onclick = e => { e.stopPropagation(); if (!needLogin('Войдите, чтобы делать репосты.')) openRepost(p); };
+  el.querySelector('.rpill').onclick = e => { e.stopPropagation(); if (!needLogin('Войдите, чтобы делать репосты.')) repostTap(p); };
   if (p.author?.is_bot) el.querySelector('.handle').insertAdjacentHTML('beforeend', ' <span class="botchip">ИИ-бот</span>');
   if (p.kind === 'gen') { const cv = el.querySelector('canvas.gen'); requestAnimationFrame(() => { sizeCanvas(cv); try { genFrame(cv, p.gen, 2); } catch (_) { } }); }
   const v = el.querySelector('.stage video') || document.createElement('video');
@@ -576,7 +577,7 @@ function slide(p) {
   });
   el.querySelector('.like').onclick = () => { if (!needLogin('Войдите, чтобы ставить лайки.')) toggleLike(p); };
   el.querySelector('.cm').onclick = () => openComments(p);
-  el.querySelector('.rp').onclick = () => { if (!needLogin('Войдите, чтобы делать репосты.')) openRepost(p); };
+  el.querySelector('.rp').onclick = () => { if (!needLogin('Войдите, чтобы делать репосты.')) repostTap(p); };
   el.querySelector('.sound').onclick = () => openSound(p);
   el.querySelector('.editbar')?.addEventListener('click', e => { e.stopPropagation(); openEdit(p); });
   if (p.sound_src && p.sound_src.id !== p.id && p.sound_src.kind !== 'gen' && p.sound_src.video_path) { const a = document.createElement('audio'); a.className = 'aux'; a.loop = true; a.preload = 'none'; a.src = videoUrl(p.sound_src.video_path); el.appendChild(a); el.dataset.borrowed = '1'; }
@@ -585,7 +586,7 @@ function slide(p) {
   el.querySelector('.avatar').onclick = e => { if (e.target.classList.contains('follow')) { e.stopPropagation(); if (!needLogin('Войдите, чтобы подписываться.')) toggleFollow(p.author_id); return; } openProfile(p.author_id); };
   el.querySelector('.handle').onclick = () => openProfile(p.author_id);
   el.querySelectorAll('.cap .tag').forEach(t => t.onclick = e => { e.stopPropagation(); openSearch(t.textContent); });
-  el.querySelector('.mute').onclick = () => { F.muted = !F.muted; applyMute(); };
+  soundButton(el.querySelector('.mute'));
   fillSlide(el, p);
   return el;
 }
@@ -614,18 +615,37 @@ function sparks(btn, colorVar) {
   const ring = document.createElement('i'); ring.className = 'ring'; ring.style.setProperty('--c', colorVar); btn.appendChild(ring); setTimeout(() => ring.remove(), 600);
 }
 function refreshSlides() { feed.querySelectorAll('.slide').forEach(el => { const p = POSTS.get(el.dataset.id); if (p) fillSlide(el, p); }); }
+const SPK_ON = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+const SPK_OFF = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 9.5l5 5M21.5 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+F.volume = Math.min(1, Math.max(0, Number(store.get('melk-volume') ?? 1)));
 function applyMute() {
   feed.querySelectorAll('.slide').forEach(sl => { const v = sl.querySelector('.stage video'), a = sl.querySelector('audio.aux'), p = POSTS.get(sl.dataset.id);
+    if (v) v.volume = F.volume; if (a) a.volume = F.volume;
     if (a) { a.muted = F.muted; if (v) v.muted = true; } else if (v) v.muted = p && synthFor(p) ? true : F.muted; });
-  if (F.active) { if (F.muted) stopSynth(F.active); else if (!F.active._music) startSynth(F.active); }
-  feed.querySelectorAll('.mute').forEach(b => b.textContent = F.muted ? 'Звук выкл.' : 'Звук вкл.');
+  if (F.active) { if (F.muted) stopSynth(F.active); else if (!F.active._music) startSynth(F.active); else F.active._music.volume(F.volume); }
+  const off = F.muted || F.volume === 0;
+  feed.querySelectorAll('.mute').forEach(b => { b.innerHTML = (off ? SPK_OFF : SPK_ON) + `<i class="vol" style="--v:${F.volume}"></i>`; b.classList.toggle('off', off); b.setAttribute('aria-label', off ? 'Включить звук' : 'Выключить звук'); });
+}
+/* tap: sound on/off; drag left/right: volume (and switches the sound on) */
+function soundButton(b) {
+  let st = null, moved = false;
+  b.addEventListener('pointerdown', e => { e.stopPropagation(); st = { x: e.clientX, v: F.muted ? 0 : F.volume }; moved = false; try { b.setPointerCapture(e.pointerId); } catch (_) { } });
+  b.addEventListener('pointermove', e => {
+    if (!st) return; const dx = e.clientX - st.x; if (!moved && Math.abs(dx) < 6) return;
+    moved = true; b.classList.add('dragging');
+    F.volume = Math.round(Math.min(1, Math.max(0, st.v + dx / 140)) * 100) / 100; F.muted = F.volume === 0; applyMute();
+  });
+  const end = () => { if (!st) return; st = null; b.classList.remove('dragging'); store.set('melk-volume', String(F.volume)); };
+  b.addEventListener('pointerup', end); b.addEventListener('pointercancel', end);
+  b.addEventListener('click', e => { e.stopPropagation(); if (moved) { moved = false; return; } F.muted = !F.muted; if (!F.muted && F.volume === 0) F.volume = .6; applyMute(); });
+  const off = F.muted || F.volume === 0; b.innerHTML = (off ? SPK_OFF : SPK_ON) + `<i class="vol" style="--v:${F.volume}"></i>`; b.classList.toggle('off', off);
 }
 function activate(el) {
   if (F.active === el) return;
   if (F.active) { F.active.querySelector('.stage video')?.pause(); F.active.querySelector('audio.aux')?.pause(); stopSynth(F.active); F.active.classList.remove('live'); }
   F.active = el; F.paused = false; el.classList.remove('paused'); el.classList.add('live');
   const p = POSTS.get(el.dataset.id), v = el.querySelector('.stage video'), aux = el.querySelector('audio.aux');
-  el._acc = 0; el._lt = performance.now(); el._gs = {};
+  el._acc = 0; el._lt = performance.now(); el._gs = {}; if (v) v.volume = F.volume; if (aux) aux.volume = F.volume;
   const fallback = () => { F.muted = true; applyMute(); v?.play().catch(() => { }); aux?.play().catch(() => { }); };
   if (v) v.currentTime = 0;
   if (aux) { v.muted = true; aux.muted = F.muted; aux.currentTime = 0; v.play().catch(() => { }); aux.play().catch(fallback); }
@@ -662,6 +682,16 @@ async function toggleRel(p, set, table, countKey, btnSel, color2, msgs) {
 }
 const toggleLike = p => toggleRel(p, S.liked, 'melk_likes', 'likeCount', '.like', 'var(--heart)');
 const toggleSave = p => toggleRel(p, S.saved, 'melk_saves', null, '.sv', 'var(--sun)', ['Сохранено в избранное', 'Убрано из избранного']);
+async function repostTap(p) {
+  if (S.reposted.has(p.id)) return openRepost(p);
+  const key = 'rp' + p.id; if (busy.has(key)) return; busy.add(key);
+  S.reposted.add(p.id); p.repostCount++; p.rpBy = { name: S.me?.name || S.me?.username, note: '', mine: true, score: 9 }; refreshSlides();
+  feed.querySelectorAll(`[data-id="${p.id}"] .rp, [data-id="${p.id}"] .rpill`).forEach(b => { replay(b, 'pop'); if (b.classList.contains('rp')) sparks(b, 'var(--mint)'); });
+  const { error } = await sb.from('melk_reposts').insert({ post_id: p.id, user_id: S.user.id, note: '' });
+  busy.delete(key);
+  if (error && error.code !== '23505') { S.reposted.delete(p.id); p.repostCount = Math.max(0, p.repostCount - 1); p.rpBy = null; refreshSlides(); return dbErr(error); }
+  toast('Репост сделан. Нажмите ещё раз, чтобы добавить заметку');
+}
 async function openRepost(p) {
   const on = S.reposted.has(p.id);
   const body = document.createElement('div'); body.className = 'form';
@@ -882,7 +912,7 @@ function preview(m) { if (!m) return 'Чат создан'; const who = m.sender
 async function openInbox() {
   if (needLogin('Войдите, чтобы переписываться с друзьями.')) return;
   const body = document.createElement('div'); body.className = 'inbox';
-  body.innerHTML = '<div class="field"><input type="text" id="ib-q" placeholder="Найти человека по нику" autocomplete="off" autocapitalize="none"></div><div class="ilist"><p class="hint" style="text-align:center;padding:30px">Загружаем чаты…</p></div>';
+  body.innerHTML = '<form class="sbar" role="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input type="search" id="ib-q" placeholder="Поиск по сообщениям и людям" autocomplete="off" autocapitalize="none" enterkeyhint="search"></form><div class="ilist"><p class="hint" style="text-align:center;padding:30px">Загружаем чаты…</p></div>';
   page('Сообщения', body, '#chats');
   const list = body.querySelector('.ilist'), q = body.querySelector('#ib-q');
   const row = (u, sub, unread, onClick, i) => {
@@ -896,16 +926,37 @@ async function openInbox() {
     chats.forEach((c, i) => list.appendChild(row(c.other, preview(c.last) + (c.at ? ' · ' + ago(c.at) : ''), c.unread, () => openChat(c.id, c.other), i)));
   };
   const chats = await loadInbox(); drawChats(chats);
-  let t; q.oninput = () => { clearTimeout(t); t = setTimeout(async () => {
-    const s = q.value.trim().toLowerCase(); if (!s) return drawChats(chats);
-    const people = await searchPeople(s); list.innerHTML = people.length ? '' : '<p class="hint" style="text-align:center;padding:24px">Никого с таким ником.</p>';
-    people.forEach((u, i) => list.appendChild(row(u, '@' + u.username, false, async () => { try { openChat(await openDm(u.id), u); } catch (e) { dbErr(e); } }, i)));
-  }, 250); };
+  body.querySelector('form').onsubmit = e => { e.preventDefault(); q.blur(); };
+  let t, seq = 0; q.oninput = () => { clearTimeout(t); t = setTimeout(async () => {
+    const raw = q.value.trim(), s = raw.toLowerCase(); if (!s) return drawChats(chats);
+    const my = ++seq; list.innerHTML = '<div class="sload"><i></i><i></i><i></i></div>';
+    const like = '%' + raw.replace(/[%_\\]/g, m => '\\' + m) + '%';
+    const [people, msgs] = await Promise.all([
+      searchPeople(s),
+      sb.from('melk_messages').select('id,chat_id,sender_id,body,created_at').eq('kind', 'text').ilike('body', like).order('created_at', { ascending: false }).limit(40)
+    ]);
+    if (my !== seq) return;
+    const byChat = Object.fromEntries(chats.map(c => [c.id, c.other]));
+    const found = (msgs.data || []).filter(m => byChat[m.chat_id]);
+    list.innerHTML = '';
+    const head = txt => { const h = document.createElement('p'); h.className = 'mhead'; h.textContent = txt; list.appendChild(h); };
+    if (found.length) {
+      head('Сообщения · ' + found.length);
+      found.forEach((m, i) => {
+        const u = byChat[m.chat_id], b = row(u, '', false, () => openChat(m.chat_id, u, m), i); b.classList.add('mrow');
+        const who = m.sender_id === S.user.id ? 'Вы: ' : '';
+        b.querySelector('small').innerHTML = esc(who) + highlight(m.body.length > 90 ? m.body.slice(0, 90) + '…' : m.body, [s]);
+        b.insertAdjacentHTML('beforeend', `<span class="mt">${esc(ago(m.created_at))}</span>`); list.appendChild(b);
+      });
+    }
+    if (people.length) { head('Люди'); people.forEach((u, i) => list.appendChild(row(u, '@' + u.username, false, async () => { try { openChat(await openDm(u.id), u); } catch (e) { dbErr(e); } }, i))); }
+    if (!found.length && !people.length) list.innerHTML = '<div class="empty small"><h2>Ничего не нашли</h2><p>Ни в сообщениях, ни среди людей нет совпадений.</p></div>';
+  }, 280); };
 }
 
 let openChatState = null;
 async function openChatWith(uid, prof) { if (needLogin('Войдите, чтобы написать.')) return; try { openChat(await openDm(uid), prof); } catch (e) { dbErr(e); } }
-async function openChat(cid, other) {
+async function openChat(cid, other, focus) {
   const body = document.createElement('div'); body.className = 'chat';
   body.innerHTML = `<div class="msgs"><p class="hint" style="text-align:center;padding:30px">Загружаем…</p></div>
     <div class="stkpanel" hidden>${STICKERS.map(s => `<button class="stkbtn" data-s="${s[0]}" aria-label="${esc(s[2])}">${stickerHTML(s[0])}</button>`).join('')}</div>
@@ -926,7 +977,7 @@ async function openChat(cid, other) {
     if (seen.has(m.id)) return; seen.add(m.id);
     const day = new Date(m.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
     if (day !== lastDay) { lastDay = day; const d = document.createElement('div'); d.className = 'day'; d.textContent = day; box.appendChild(d); }
-    const mine = m.sender_id === S.user.id, el = document.createElement('div');
+    const mine = m.sender_id === S.user.id, el = document.createElement('div'); el.dataset.mid = m.id;
     el.className = 'msg ' + (mine ? 'me' : 'them') + ' k-' + m.kind + (animate ? ' new' : '');
     if (m.kind === 'sticker') el.innerHTML = stickerHTML(m.body, true);
     else if (m.kind === 'post') {
@@ -941,12 +992,22 @@ async function openChat(cid, other) {
   }
   async function delMsg(m, el) { const { error } = await sb.from('melk_messages').delete().eq('id', m.id); if (error) return dbErr(error); el.classList.add('gone'); setTimeout(() => el.remove(), 300); }
   const toBottom = smooth => box.scrollTo({ top: box.scrollHeight, behavior: smooth && !RM ? 'smooth' : 'auto' });
-  const { data, error } = await sb.from('melk_messages').select('id,chat_id,sender_id,kind,body,post_id,created_at').eq('chat_id', cid).order('created_at', { ascending: false }).limit(150);
+  const MSEL = 'id,chat_id,sender_id,kind,body,post_id,created_at';
+  let data, error;
+  if (focus) {
+    const [before, after] = await Promise.all([
+      sb.from('melk_messages').select(MSEL).eq('chat_id', cid).lt('created_at', focus.created_at).order('created_at', { ascending: false }).limit(40),
+      sb.from('melk_messages').select(MSEL).eq('chat_id', cid).gte('created_at', focus.created_at).order('created_at', { ascending: true }).limit(150)
+    ]);
+    error = before.error || after.error; data = [...(after.data || [])].reverse().concat(before.data || []);
+  } else ({ data, error } = await sb.from('melk_messages').select(MSEL).eq('chat_id', cid).order('created_at', { ascending: false }).limit(150));
   if (error) { box.innerHTML = '<p class="err" style="text-align:center;padding:30px">Чат не загрузился.</p>'; return; }
   const ms = (data || []).reverse(); await hydratePosts(ms);
   box.innerHTML = ms.length ? '' : `<div class="empty small chatempty"><div class="pav big" style="${avStyle(other, other?.id)}">${avText(other)}</div><h2></h2><p>Напишите первым или отправьте стикер.</p></div>`;
   if (!ms.length) box.querySelector('h2').textContent = other?.name || '';
-  ms.forEach(m => bubble(m, false)); toBottom(false);
+  ms.forEach(m => bubble(m, false));
+  const hit = focus && box.querySelector(`[data-mid="${focus.id}"]`);
+  if (hit) { hit.scrollIntoView({ block: 'center' }); hit.classList.add('hit'); } else toBottom(false);
   markRead(cid);
   openChatState = { id: cid, push: async m => { if (box.querySelector('.chatempty')) box.innerHTML = ''; await hydratePosts([m]); bubble(m, true); toBottom(true); if (m.sender_id !== S.user.id) markRead(cid); } };
   const stillOpen = () => document.body.contains(pg);
