@@ -31,6 +31,7 @@ const fmt = n => n >= 1e6 ? (n / 1e6).toFixed(1).replace('.', ',') + ' млн' :
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const capHTML = s => esc(s).replace(/#([\wа-яё]+)/gi, '<span class="tag">#$1</span>');
 const ago = iso => { const t = new Date(iso).getTime(), m = Math.floor((Date.now() - t) / 6e4); if (m < 1) return 'только что'; if (m < 60) return m + ' мин. назад'; const h = Math.floor(m / 60); if (h < 24) return h + ' ч. назад'; const d = Math.floor(h / 24); return d < 30 ? d + ' дн. назад' : new Date(t).toLocaleDateString('ru-RU'); };
+const plural = (n, a, b, c) => { const m = n % 10, h = n % 100; return m === 1 && h !== 11 ? a : m >= 2 && m <= 4 && (h < 12 || h > 14) ? b : c; };
 const clock = iso => new Date(iso).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 const hue = id => { let h = 0; for (const ch of String(id)) h = (h * 31 + ch.charCodeAt(0)) % 360; return h; };
 const color = id => `hsl(${hue(id)},80%,64%)`;
@@ -612,7 +613,7 @@ async function openComments(p) {
   let items = [], myLikes = new Set(), authorLikes = new Set();
   const order = () => items.sort((a, b) => (b.pinned - a.pinned) || (new Date(b.created_at) - new Date(a.created_at)));
   const draw = () => {
-    sh.querySelector('.ttl').textContent = `${fmt(items.length)} комментариев`; list.innerHTML = '';
+    sh.querySelector('.ttl').textContent = `${fmt(items.length)} ${plural(items.length, 'комментарий', 'комментария', 'комментариев')}`; list.innerHTML = '';
     if (!items.length) { list.innerHTML = `<p class="hint" style="text-align:center;padding:30px">${closed ? 'Автор закрыл комментарии к этому ролику.' : 'Пока нет комментариев. Будьте первым.'}</p>`; return; }
     order().forEach((c, i) => {
       const row = document.createElement('div'); row.className = 'c' + (c.pinned ? ' pinned' : ''); row.style.setProperty('--i', Math.min(i, 8));
