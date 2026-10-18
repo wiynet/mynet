@@ -4,7 +4,7 @@
 
 - Сайт: https://wiynet.github.io/mynet/melk/
 - База: Supabase-проект `mynet`, таблицы `melk_*`, видео в бакете `melk-videos`.
-- Вход по нику и паролю без писем. Ник превращается в служебный адрес `ник@melk.local`. Аккаунты общие с mynet: туда можно войти той же почтой или ником.
+- Вход по нику и паролю без писем. Ник превращается в служебный адрес `ник@melk.mestario.top`. Аккаунты общие с mynet: туда можно войти той же почтой или ником.
 
 ## Файлы
 
@@ -21,6 +21,6 @@ insert into public.melk_admins (user_id)
 select id from public.melk_profiles where username = 'ник';
 ```
 
-## Обязательная настройка
+## Регистрация
 
-В Supabase: Authentication → Sign In / Providers → Email → выключить **Confirm email**. Иначе регистрация по нику не заработает.
+Аккаунт создаёт серверная функция `melk-signup` (Supabase Edge Functions). Она проверяет ник и пароль и создаёт пользователя сразу подтверждённым, поэтому писем и кодов нет, а настройку «Confirm email» трогать не нужно.

@@ -2,7 +2,7 @@
 const SUPABASE_URL = 'https://nbjaysdarixncuumjarc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_G0ywq5XbqYa8SRKSLOLgBg_ohjrxqzN';
 const BUCKET = 'melk-videos';
-const LOGIN_DOMAIN = 'melk.local';           // ник превращается в служебную почту, писем никто не получает
+const LOGIN_DOMAIN = 'melk.mestario.top';    // ник превращается в служебный адрес, писем на него не бывает
 const PAGE = 12;
 const MAX_MB = 50;
 
@@ -102,16 +102,22 @@ function openAuth(why, mode = 'in') {
       if (!raw) return fail('Введите ник или почту.');
       const email = raw.includes('@') ? raw.toLowerCase() : `${raw.toLowerCase()}@${LOGIN_DOMAIN}`;
       const { error } = await sb.auth.signInWithPassword({ email, password: pass });
-      if (error) return fail(/invalid/i.test(error.message) ? 'Неверный ник или пароль.' : /confirm/i.test(error.message) ? 'Аккаунт не подтверждён. Попросите администратора отключить подтверждение почты.' : 'Не получилось войти: ' + error.message);
+      if (error) return fail(/invalid/i.test(error.message) ? 'Неверный ник или пароль.' : 'Не получилось войти: ' + error.message);
     } else {
       const u = raw.toLowerCase(), name = body.querySelector('#a-name').value.trim() || u;
       if (!/^[a-z0-9_]{3,20}$/.test(u)) return fail('Ник: от 3 до 20 символов, только латиница, цифры и _.');
       const free = await sb.rpc('melk_username_free', { u });
       if (free.error) return fail('Нет связи с сервером. Попробуйте ещё раз.');
       if (!free.data) return fail('Этот ник уже занят. Попробуйте другой.');
-      const { data, error } = await sb.auth.signUp({ email: `${u}@${LOGIN_DOMAIN}`, password: pass, options: { data: { username: u, name, app: 'melk' } } });
-      if (error) return fail(/registered|exists/i.test(error.message) ? 'Этот ник уже занят.' : /password/i.test(error.message) ? 'Пароль слишком простой. Придумайте другой.' : 'Не получилось зарегистрироваться: ' + error.message);
-      if (!data.session) return fail('Регистрация пока выключена: в Supabase включено подтверждение почты. Администратору нужно его отключить.');
+      // аккаунт создаёт серверная функция: без почты и без писем
+      let res;
+      try {
+        const r = await fetch(`${SUPABASE_URL}/functions/v1/melk-signup`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }, body: JSON.stringify({ username: u, password: pass, name }) });
+        res = await r.json();
+      } catch (_) { return fail('Нет связи с сервером. Попробуйте ещё раз.'); }
+      if (!res.ok) return fail(res.error === 'taken' ? 'Этот ник уже занят. Попробуйте другой.' : res.error === 'bad_username' ? 'Ник: от 3 до 20 символов, только латиница, цифры и _.' : res.error === 'bad_password' || res.error === 'weak_password' ? 'Пароль слишком простой. Придумайте другой, от 6 символов.' : 'Не получилось зарегистрироваться. Попробуйте ещё раз.');
+      const { error } = await sb.auth.signInWithPassword({ email: res.email || `${u}@${LOGIN_DOMAIN}`, password: pass });
+      if (error) return fail('Аккаунт создан, но войти не получилось. Попробуйте во вкладке «Вход».');
     }
     closePage(); await onAuthChanged(); toast(mode === 'in' ? 'Вы вошли' : 'Добро пожаловать в «Мельк»!');
   };
