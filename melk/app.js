@@ -129,7 +129,7 @@ async function fetchPosts(from) {
 async function reloadFeed(focusId) {
   F.posts = []; F.done = false; POSTS.clear();
   if (io) io.disconnect(); feed.querySelectorAll('video').forEach(v => v.pause());
-  feed.innerHTML = '<div class="empty"><h2>Загружаем ленту…</h2></div>'; F.active = null;
+  feed.innerHTML = '<div class="loader"><div class="lg">мельк</div><div class="bars"><i></i><i></i><i></i></div></div>'; F.active = null;
   try {
     let first = [];
     if (focusId) { const { data } = await sb.from('melk_posts').select(POST_SELECT).eq('id', focusId).maybeSingle(); if (data) first = [{ ...normPost(data), _pinned: true }]; }
@@ -181,6 +181,7 @@ function slide(p) {
   <div class="progress"><i></i></div>`;
   el.querySelector('.handle').textContent = '@' + (p.author?.username || 'user');
   const v = el.querySelector('video');
+  v.addEventListener('loadeddata', () => v.classList.add('ready'), { once: true });
   v.addEventListener('error', () => { if (!el.querySelector('.missing')) { const m = document.createElement('div'); m.className = 'missing'; m.textContent = 'Видео не воспроизводится в этом браузере или было удалено.'; el.querySelector('.stage').appendChild(m); } });
   v.addEventListener('timeupdate', () => { if (v.duration) el.querySelector('.progress i').style.width = (v.currentTime / v.duration * 100) + '%'; });
   let lastTap = 0, tapT;
@@ -200,24 +201,38 @@ function slide(p) {
   return el;
 }
 function fillSlide(el, p) {
-  const lk = el.querySelector('.like'); lk.classList.toggle('liked', S.liked.has(p.id)); lk.querySelector('span').textContent = fmt(p.likeCount);
-  el.querySelector('.cm span').textContent = fmt(p.commentCount);
+  const lk = el.querySelector('.like'); lk.classList.toggle('liked', S.liked.has(p.id)); setCount(lk.querySelector('span'), fmt(p.likeCount));
+  setCount(el.querySelector('.cm span'), fmt(p.commentCount));
   const sv = el.querySelector('.sv'), saved = S.saved.has(p.id); sv.classList.toggle('saved', saved); sv.querySelector('span').textContent = saved ? 'В избранном' : 'Сохранить';
   const f = el.querySelector('.follow');
   if (S.user && p.author_id === S.user.id) { if (f) f.remove(); }
-  else if (f) { const on = S.following.has(p.author_id); f.classList.toggle('on', on); f.textContent = on ? '✓' : '+'; }
+  else if (f) { const on = S.following.has(p.author_id); if (f.classList.contains('on') !== on) { f.classList.toggle('on', on); replay(f, 'morph'); } f.textContent = on ? '✓' : '+'; }
+}
+function setCount(span, t) { if (span.textContent !== t) { const first = span.textContent === ''; span.textContent = t; if (!first) replay(span, 'tick'); } }
+function replay(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); const end = e => { if (e.target !== el) return; el.classList.remove(cls); el.removeEventListener('animationend', end); }; el.addEventListener('animationend', end); }
+function sparks(btn, colorVar) {
+  const svg = btn.querySelector('svg'); if (!svg) return;
+  for (let i = 0; i < 8; i++) { const s = document.createElement('i'); s.className = 'spark'; s.style.setProperty('--a', (i * 45 + Math.random() * 20) + 'deg'); s.style.setProperty('--c', colorVar); btn.appendChild(s); setTimeout(() => s.remove(), 700); }
+  const ring = document.createElement('i'); ring.className = 'ring'; ring.style.setProperty('--c', colorVar); btn.appendChild(ring); setTimeout(() => ring.remove(), 600);
 }
 function refreshSlides() { feed.querySelectorAll('.slide').forEach(el => { const p = POSTS.get(el.dataset.id); if (p) fillSlide(el, p); }); }
 function activate(el) {
   if (F.active === el) return;
   if (F.active) F.active.querySelector('video')?.pause();
-  F.active = el; F.paused = false; el.classList.remove('paused');
+  if (F.active) F.active.classList.remove('live');
+  F.active = el; F.paused = false; el.classList.remove('paused'); el.classList.add('live');
   const v = el.querySelector('video'); v.muted = F.muted; v.currentTime = 0;
   v.play().catch(() => { v.muted = F.muted = true; feed.querySelectorAll('.mute').forEach(b => b.textContent = 'Звук выкл.'); v.play().catch(() => { }); });
   const idx = [...feed.children].indexOf(el); if (idx >= feed.children.length - 3) loadMore();
 }
 function togglePause() { if (!F.active) return; F.paused = !F.paused; F.active.classList.toggle('paused', F.paused); const v = F.active.querySelector('video'); F.paused ? v.pause() : v.play().catch(() => { }); }
-function burst(el, e) { const r = el.getBoundingClientRect(), h = document.createElement('div'); h.className = 'burst'; h.innerHTML = ICON.heart; h.style.left = (e.clientX - r.left) + 'px'; h.style.top = (e.clientY - r.top) + 'px'; el.appendChild(h); setTimeout(() => h.remove(), 850); }
+function burst(el, e) {
+  const r = el.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  const h = document.createElement('div'); h.className = 'burst'; h.innerHTML = ICON.heart; h.style.left = x + 'px'; h.style.top = y + 'px'; h.style.setProperty('--r', (Math.random() * 30 - 15) + 'deg'); el.appendChild(h); setTimeout(() => h.remove(), 900);
+  for (let i = 0; i < 6; i++) { const m = document.createElement('div'); m.className = 'mini'; m.innerHTML = ICON.heart; m.style.left = x + 'px'; m.style.top = y + 'px';
+    m.style.setProperty('--dx', (Math.random() * 160 - 80) + 'px'); m.style.setProperty('--dy', (-60 - Math.random() * 120) + 'px'); m.style.setProperty('--d', (i * 40) + 'ms');
+    el.appendChild(m); setTimeout(() => m.remove(), 1100); }
+}
 
 /* ---------- actions ---------- */
 const busy = new Set();
@@ -225,6 +240,7 @@ async function toggleLike(p) {
   const key = 'like' + p.id; if (busy.has(key)) return; busy.add(key);
   const on = !S.liked.has(p.id);
   on ? S.liked.add(p.id) : S.liked.delete(p.id); p.likeCount += on ? 1 : -1; refreshSlides();
+  feed.querySelectorAll(`[data-id="${p.id}"] .like`).forEach(b => { replay(b, on ? 'pop' : 'shrink'); if (on) sparks(b, 'var(--heart)'); });
   const { error } = on ? await sb.from('melk_likes').insert({ post_id: p.id, user_id: S.user.id })
                        : await sb.from('melk_likes').delete().eq('post_id', p.id).eq('user_id', S.user.id);
   if (error && error.code !== '23505') { on ? S.liked.delete(p.id) : S.liked.add(p.id); p.likeCount += on ? -1 : 1; refreshSlides(); dbErr(error); }
@@ -232,6 +248,7 @@ async function toggleLike(p) {
 }
 async function toggleSave(p) {
   const on = !S.saved.has(p.id); on ? S.saved.add(p.id) : S.saved.delete(p.id); refreshSlides();
+  feed.querySelectorAll(`[data-id="${p.id}"] .sv`).forEach(b => { replay(b, on ? 'pop' : 'shrink'); if (on) sparks(b, 'var(--sun)'); });
   const { error } = on ? await sb.from('melk_saves').insert({ post_id: p.id, user_id: S.user.id })
                        : await sb.from('melk_saves').delete().eq('post_id', p.id).eq('user_id', S.user.id);
   if (error && error.code !== '23505') { on ? S.saved.delete(p.id) : S.saved.add(p.id); refreshSlides(); return dbErr(error); }
@@ -272,8 +289,8 @@ async function goToPost(id) { closeAll(); const s = feed.querySelector(`[data-id
 
 /* ---------- sheets ---------- */
 let sheetEls = [], pageEl = null, pagePushed = false;
-function closeSheet() { sheetEls.forEach(x => x.remove()); sheetEls = []; }
-function removePage() { if (pageEl) { pageEl.remove(); pageEl = null; } }
+function closeSheet() { const els = sheetEls; sheetEls = []; els.forEach(x => { x.classList.add('closing'); setTimeout(() => x.remove(), 230); }); }
+function removePage() { if (!pageEl) return; const el = pageEl; pageEl = null; el.classList.add('closing'); setTimeout(() => el.remove(), 260); }
 function closePage() { if (!pageEl) return; if (pagePushed) { pagePushed = false; history.back(); } removePage(); }
 function closeAll() { closeSheet(); closePage(); }
 addEventListener('popstate', () => { pagePushed = false; removePage(); });
@@ -356,17 +373,17 @@ function openUpload() {
     drop.innerHTML = '<video muted autoplay loop playsinline></video><span></span>'; drop.querySelector('video').src = preview; drop.querySelector('span').textContent = x.name; go.disabled = false;
   };
   go.onclick = async () => {
-    if (!file) return; go.disabled = true; go.textContent = 'Загружаем…'; err.hidden = true;
+    if (!file) return; go.disabled = true; go.classList.add('loading'); go.textContent = 'Загружаем…'; err.hidden = true;
     const ext = type === 'video/webm' ? 'webm' : type === 'video/quicktime' ? 'mov' : 'mp4';
     const path = `${S.user.id}/${crypto.randomUUID()}.${ext}`;
     const up = await sb.storage.from(BUCKET).upload(path, file, { contentType: type, cacheControl: '31536000' });
-    if (up.error) { go.disabled = false; go.textContent = 'Опубликовать'; return fail(/size|large/i.test(up.error.message) ? `Файл слишком большой, можно до ${MAX_MB} МБ.` : /mime|type/i.test(up.error.message) ? 'Этот формат не подходит.' : 'Видео не загрузилось. Попробуйте ещё раз.'); }
+    if (up.error) { go.disabled = false; go.classList.remove('loading'); go.textContent = 'Опубликовать'; return fail(/size|large/i.test(up.error.message) ? `Файл слишком большой, можно до ${MAX_MB} МБ.` : /mime|type/i.test(up.error.message) ? 'Этот формат не подходит.' : 'Видео не загрузилось. Попробуйте ещё раз.'); }
     const { data, error } = await sb.from('melk_posts').insert({
       author_id: S.user.id, video_path: path,
       caption: body.querySelector('#up-cap').value.trim().slice(0, 300),
       sound: body.querySelector('#up-sound').value.trim().slice(0, 60) || 'Оригинальный звук'
     }).select('id').single();
-    if (error) { await sb.storage.from(BUCKET).remove([path]); go.disabled = false; go.textContent = 'Опубликовать'; return fail('Не получилось опубликовать. Попробуйте ещё раз.'); }
+    if (error) { await sb.storage.from(BUCKET).remove([path]); go.disabled = false; go.classList.remove('loading'); go.textContent = 'Опубликовать'; return fail('Не получилось опубликовать. Попробуйте ещё раз.'); }
     if (preview) URL.revokeObjectURL(preview);
     closeSheet(); await goToPost(data.id); toast('Опубликовано');
   };

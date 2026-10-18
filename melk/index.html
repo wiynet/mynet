@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0c0e13">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Manrope:wght@400;600;800&display=swap">
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
 <div class="app" id="app">
@@ -17,7 +17,7 @@
     <button role="tab" id="tab-follow" aria-selected="false">Подписки</button>
     <button role="tab" id="tab-fy" aria-selected="true">Для вас</button>
   </nav>
-  <div class="feed" id="feed"><div class="empty"><h2>Загружаем ленту…</h2></div></div>
+  <div class="feed" id="feed"><div class="loader"><div class="lg">мельк</div><div class="bars"><i></i><i></i><i></i></div></div></div>
   <div class="nav">
     <button class="cur" id="nav-home"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 2 11h3v9h5v-6h4v6h5v-9h3z"/></svg>Главная</button>
     <button id="nav-up" aria-label="Опубликовать видео"><span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
@@ -25,6 +25,6 @@
   </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-<script src="app.js?v=4"></script>
+<script src="app.js?v=5"></script>
 </body>
 </html>
