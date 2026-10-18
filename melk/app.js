@@ -269,6 +269,7 @@ document.addEventListener('keydown', e => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   if (sheetEls.length || pages.length) { if (e.key === 'Escape') { if (sheetEls.length) closeSheet(); else closeTop(); } return; }
   const k = e.key.toLowerCase(), code = e.code;
+  if (e.key === '/') { e.preventDefault(); openSearch(); return; }
   if (code === 'Space' || k === 'k') { e.preventDefault(); togglePause(); if (F.active) replay(F.active.querySelector('.playicon'), 'tap'); return; }
   if (k === 'arrowdown' || k === 'arrowright' || code === 'KeyS' || code === 'KeyD') { e.preventDefault(); go(1); return; }
   if (k === 'arrowup' || k === 'arrowleft' || code === 'KeyW' || code === 'KeyA') { e.preventDefault(); go(-1); return; }
@@ -583,6 +584,7 @@ function slide(p) {
   el.querySelector('.sh').onclick = () => openShare(p);
   el.querySelector('.avatar').onclick = e => { if (e.target.classList.contains('follow')) { e.stopPropagation(); if (!needLogin('Войдите, чтобы подписываться.')) toggleFollow(p.author_id); return; } openProfile(p.author_id); };
   el.querySelector('.handle').onclick = () => openProfile(p.author_id);
+  el.querySelectorAll('.cap .tag').forEach(t => t.onclick = e => { e.stopPropagation(); openSearch(t.textContent); });
   el.querySelector('.mute').onclick = () => { F.muted = !F.muted; applyMute(); };
   fillSlide(el, p);
   return el;
@@ -963,6 +965,94 @@ async function openChat(cid, other) {
 }
 async function markRead(cid) { await sb.from('melk_chat_members').update({ last_read_at: new Date().toISOString() }).eq('chat_id', cid).eq('user_id', S.user.id); refreshUnread(); }
 
+/* ---------- search ---------- */
+const RECENT_KEY = 'melk-recent';
+const recent = { all() { try { return JSON.parse(store.get(RECENT_KEY) || '[]'); } catch (_) { return []; } }, add(q) { q = q.trim(); if (!q) return; store.set(RECENT_KEY, JSON.stringify([q, ...recent.all().filter(x => x !== q)].slice(0, 8))); }, clear() { store.del(RECENT_KEY); } };
+const searchWords = q => [...new Set(q.toLowerCase().replace(/[#,()*%\\:."'`]/g, ' ').split(/\s+/).filter(w => w.length >= 2))].slice(0, 6);
+function highlight(text, words) {
+  let h = esc(text || ''); if (!words.length) return h;
+  const re = new RegExp('(' + words.map(w => esc(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'gi');
+  return h.replace(re, '<mark>$1</mark>');
+}
+async function popularTags() {
+  const { data } = await sb.from('melk_posts').select('caption').order('created_at', { ascending: false }).limit(200);
+  const n = {}; (data || []).forEach(r => (String(r.caption || '').match(/#[\wа-яё]+/gi) || []).forEach(t => { t = t.toLowerCase(); n[t] = (n[t] || 0) + 1; }));
+  return Object.entries(n).sort((a, b) => b[1] - a[1]).slice(0, 12).map(x => x[0]);
+}
+function openSearch(q0 = '') {
+  const body = document.createElement('div'); body.className = 'search';
+  body.innerHTML = `<form class="sbar" role="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+      <input id="s-q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Опишите видео: «закат на море», «котик»…" maxlength="100"><button type="button" class="sclear" aria-label="Очистить" hidden>×</button></form>
+    <div class="sstart"></div>
+    <div class="sres" hidden><div class="ptabs" role="tablist"><button data-t="v" aria-selected="true">Видео</button><button data-t="u">Люди</button></div><div class="sbody"></div></div>`;
+  page('Поиск', body, '#search');
+  const inp = body.querySelector('#s-q'), clr = body.querySelector('.sclear'), start = body.querySelector('.sstart'), res = body.querySelector('.sres'), out = body.querySelector('.sbody');
+  let tab = 'v', last = { q: '', vids: [], people: [] }, seq = 0;
+  const chip = (txt, cls, fn) => { const b = document.createElement('button'); b.className = 'schip ' + (cls || ''); b.textContent = txt; b.onclick = fn; return b; };
+  async function drawStart() {
+    start.innerHTML = ''; start.hidden = false; res.hidden = true;
+    const rec = recent.all();
+    if (rec.length) {
+      const h = document.createElement('div'); h.className = 'shead'; h.innerHTML = '<span>Недавние</span><button class="linkbtn">Очистить</button>';
+      h.querySelector('button').onclick = () => { recent.clear(); drawStart(); }; start.appendChild(h);
+      const box = document.createElement('div'); box.className = 'schips'; rec.forEach(r => box.appendChild(chip(r, 'rec', () => { inp.value = r; run(r, true); }))); start.appendChild(box);
+    }
+    const h2 = document.createElement('div'); h2.className = 'shead'; h2.innerHTML = '<span>Популярные хэштеги</span>'; start.appendChild(h2);
+    const box2 = document.createElement('div'); box2.className = 'schips'; box2.innerHTML = '<p class="hint">Загружаем…</p>'; start.appendChild(box2);
+    const tags = await popularTags().catch(() => []); box2.innerHTML = tags.length ? '' : '<p class="hint">Пока нет хэштегов. Добавляйте #теги в подписи к роликам.</p>';
+    tags.forEach(t => box2.appendChild(chip(t, 'tagc', () => { inp.value = t; run(t, true); })));
+    const tip = document.createElement('p'); tip.className = 'hint stip'; tip.textContent = 'Ищем по подписи, хэштегам и названию звука. Чем больше слов совпало, тем выше ролик в результатах.'; start.appendChild(tip);
+  }
+  function drawResults() {
+    const words = searchWords(last.q); out.innerHTML = '';
+    body.querySelectorAll('.sres .ptabs button').forEach(b => { b.setAttribute('aria-selected', b.dataset.t === tab); b.textContent = (b.dataset.t === 'v' ? 'Видео' : 'Люди') + ' · ' + (b.dataset.t === 'v' ? last.vids.length : last.people.length); });
+    if (tab === 'v') {
+      if (!last.vids.length) { out.innerHTML = `<div class="empty small"><h2>Ничего не нашли</h2><p>Попробуйте другие слова или хэштег.</p></div>`; return; }
+      const g = document.createElement('div'); g.className = 'sgrid';
+      last.vids.forEach((v, i) => {
+        const b = document.createElement('button'); b.className = 'scard'; b.style.setProperty('--i', Math.min(i, 10));
+        b.innerHTML = `<span class="th"></span><span class="sc"><span class="cp">${highlight(v.caption || soundName(v), words)}</span><span class="by"><span class="pav xs" style="${avStyle(v.author, v.author_id)}">${avText(v.author)}</span><span class="bn"></span><span class="lk">♥ ${fmt(v.likeCount)}</span></span></span>`;
+        b.querySelector('.th').replaceWith(mediaThumb(v)); b.querySelector('.bn').textContent = v.author?.name || v.author?.username || '';
+        b.onclick = () => { recent.add(last.q); goToPost(v.id); }; g.appendChild(b);
+      });
+      out.appendChild(g);
+    } else {
+      if (!last.people.length) { out.innerHTML = '<div class="empty small"><h2>Никого не нашли</h2><p>Попробуйте часть имени или ника.</p></div>'; return; }
+      last.people.forEach((u, i) => {
+        const b = document.createElement('button'); b.className = 'irow'; b.style.setProperty('--i', i);
+        b.innerHTML = `<span class="pav" style="${avStyle(u, u.id)}">${avText(u)}</span><span class="it"><b></b><small></small></span>`;
+        b.querySelector('b').innerHTML = highlight(u.name || u.username, words); b.querySelector('small').innerHTML = '@' + highlight(u.username, words);
+        b.onclick = () => { recent.add(last.q); openProfile(u.id); }; out.appendChild(b);
+      });
+    }
+  }
+  async function run(q, save) {
+    q = q.trim(); clr.hidden = !q; if (!q) { drawStart(); return; }
+    const words = searchWords(q); if (!words.length) return;
+    const my = ++seq; start.hidden = true; res.hidden = false; out.innerHTML = '<div class="sload"><i></i><i></i><i></i></div>';
+    const vf = words.flatMap(w => [`caption.ilike.*${w}*`, `sound.ilike.*${w}*`]).join(',');
+    const uf = words.flatMap(w => [`username.ilike.*${w}*`, `name.ilike.*${w}*`]).join(',');
+    const [v, u] = await Promise.all([
+      sb.from('melk_posts').select(POST_SELECT).or(vf).order('created_at', { ascending: false }).limit(80),
+      sb.from('melk_profiles').select('id,username,name,avatar_path').or(uf).limit(30)
+    ]);
+    if (my !== seq) return;
+    if (v.error && u.error) { out.innerHTML = '<p class="err" style="text-align:center;padding:30px">Поиск не сработал. Проверьте интернет.</p>'; return; }
+    const ql = q.toLowerCase().replace(/^#/, '');
+    const score = p => { const c = (p.caption || '').toLowerCase(), sn = (p.sound || '').toLowerCase(); let k = 0; words.forEach(w => { if (c.includes(w)) k += 2; if (c.includes('#' + w)) k += 1; if (sn.includes(w)) k += 1; }); if (c.includes(ql)) k += 3; return k + Math.min(2, (p.like_count || 0) / 50); };
+    last = { q, vids: (v.data || []).map(normPost).sort((a, b) => score(b) - score(a)), people: u.data || [] };
+    if (!last.vids.length && last.people.length) tab = 'u'; else if (last.vids.length) tab = tab === 'u' && last.people.length ? 'u' : 'v';
+    if (save) recent.add(q);
+    drawResults();
+  }
+  body.querySelectorAll('.sres .ptabs button').forEach(b => b.onclick = () => { tab = b.dataset.t; drawResults(); });
+  let t; inp.oninput = () => { clearTimeout(t); t = setTimeout(() => run(inp.value), 320); };
+  body.querySelector('form').onsubmit = e => { e.preventDefault(); clearTimeout(t); run(inp.value, true); inp.blur(); };
+  clr.onclick = () => { inp.value = ''; run(''); inp.focus(); };
+  inp.value = q0; if (q0) run(q0, true); else drawStart();
+  setTimeout(() => { if (!q0) inp.focus(); }, 350);
+}
+
 /* ---------- tabs & nav ---------- */
 function setTab(t) {
   const dir = t === 'fy' ? 1 : -1, changed = F.tab !== t;
@@ -980,6 +1070,7 @@ $('tab-fy').onclick = () => setTab('fy');
 $('tab-follow').onclick = () => setTab('follow');
 $('nav-home').onclick = () => { closeAll(); if (F.tab !== 'fy') setTab('fy'); else feed.scrollTo({ top: 0, behavior: 'smooth' }); };
 $('nav-up').onclick = () => openUpload();
+$('open-search').onclick = () => openSearch();
 $('nav-chat').onclick = () => openInbox();
 $('nav-me').onclick = () => { if (needLogin()) return; openProfile(S.user.id); };
 async function goToPost(id) { closeAll(); const s = feed.querySelector(`[data-id="${id}"]`); if (s && F.tab === 'fy') { s.scrollIntoView(); return; } F.tab = 'fy'; $('tab-fy').setAttribute('aria-selected', true); $('tab-follow').setAttribute('aria-selected', false); moveTabLine(); await reloadFeed(id); }
@@ -1351,7 +1442,8 @@ async function openProfile(uid) {
   await reloadFeed(m ? m[1] : null);
   const u = location.hash.match(/^#@([a-z0-9_]{3,20})$/i);
   const h = location.hash;
-  if (h === '#login' || h === '#chats' || u) history.replaceState(null, '', location.pathname);
+  if (h === '#login' || h === '#chats' || h === '#search' || u) history.replaceState(null, '', location.pathname);
+  if (h === '#search') openSearch();
   if (h === '#login' && !S.user) openAuth();
   if (h === '#chats' && S.user) openInbox();
   if (u) { const { data } = await sb.from('melk_profiles').select('id').eq('username', u[1].toLowerCase()).maybeSingle(); if (data) openProfile(data.id); }
