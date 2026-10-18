@@ -36,7 +36,7 @@ const S = { user: null, me: null, admin: false, liked: new Set(), saved: new Set
 const F = { tab: 'fy', posts: [], done: false, loading: false, active: null, paused: false, muted: false };
 const POSTS = new Map(); // id -> post
 
-const POST_SELECT = 'id,video_path,caption,sound,created_at,author_id,author:melk_profiles(id,username,name),likes:melk_likes(count),comments:melk_comments(count)';
+const POST_SELECT = 'id,video_path,caption,sound,created_at,author_id,author:melk_profiles!melk_posts_author_id_fkey(id,username,name),likes:melk_likes(count),comments:melk_comments(count)';
 function normPost(r) { return { ...r, likeCount: r.likes?.[0]?.count ?? 0, commentCount: r.comments?.[0]?.count ?? 0 }; }
 
 /* ---------- auth ---------- */
@@ -302,7 +302,7 @@ async function openComments(p) {
       list.appendChild(row);
     }
   };
-  const { data, error } = await sb.from('melk_comments').select('id,body,created_at,author_id,author:melk_profiles(username,name)').eq('post_id', p.id).order('created_at', { ascending: false }).limit(200);
+  const { data, error } = await sb.from('melk_comments').select('id,body,created_at,author_id,author:melk_profiles!melk_comments_author_id_fkey(username,name)').eq('post_id', p.id).order('created_at', { ascending: false }).limit(200);
   if (error) { list.innerHTML = '<p class="err" style="text-align:center;padding:20px">Комментарии не загрузились.</p>'; return; }
   items = data; p.commentCount = Math.max(p.commentCount, items.length); refreshSlides(); draw();
   inp.oninput = () => btn.disabled = !inp.value.trim();
@@ -310,7 +310,7 @@ async function openComments(p) {
   body.querySelector('form').onsubmit = async e => {
     e.preventDefault(); const t = inp.value.trim(); if (!t || needLogin('Войдите, чтобы комментировать.')) return;
     btn.disabled = true;
-    const { data: row, error } = await sb.from('melk_comments').insert({ post_id: p.id, author_id: S.user.id, body: t }).select('id,body,created_at,author_id,author:melk_profiles(username,name)').single();
+    const { data: row, error } = await sb.from('melk_comments').insert({ post_id: p.id, author_id: S.user.id, body: t }).select('id,body,created_at,author_id,author:melk_profiles!melk_comments_author_id_fkey(username,name)').single();
     if (error) { btn.disabled = false; return dbErr(error); }
     inp.value = ''; items.unshift(row); p.commentCount++; refreshSlides(); draw(); list.scrollTop = 0;
   };
