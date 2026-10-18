@@ -274,3 +274,82 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,.tile:focus-visi
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;animation-delay:0s!important;transition-duration:.01ms!important}
   .slide .info>*,.slide .rail>*{opacity:1;transform:none}
 }
+
+/* ================= motion v2 ================= */
+/* card stack: the slide you leave sinks back, the next one slides over it */
+.slide{--a:0;--b:0;transform:translateY(calc(var(--a) * 38%)) scale(calc(1 - var(--a) * .12));border-radius:calc(var(--a) * 34px);filter:brightness(calc(1 - var(--a) * .6));transform-origin:50% 0;will-change:transform}
+.slide .info{transform:translateY(calc(var(--b) * 70px));opacity:calc(1 - var(--b) * 1.3)}
+.slide .rail{transform:translateX(calc(var(--b) * 40px));opacity:calc(1 - var(--b) * 1.3)}
+.slide .stage video{transform:scale(calc(1 + var(--b) * .08))}
+
+/* tab underline glides between tabs */
+.top{position:absolute}
+.top button[aria-selected="true"]::after{display:none}
+.tabline{position:absolute;left:0;bottom:6px;height:3px;width:0;border-radius:2px;background:var(--sun);transition:transform .45s var(--spring),width .45s var(--spring);pointer-events:none;box-shadow:0 0 10px rgba(255,201,60,.6)}
+
+/* rolling counters */
+.tick.up{animation:rollup .38s var(--out)}
+.tick.down{animation:rolldown .38s var(--out)}
+@keyframes rollup{0%{transform:translateY(70%);opacity:0;filter:blur(2px)}100%{transform:none;opacity:1;filter:none}}
+@keyframes rolldown{0%{transform:translateY(-70%);opacity:0;filter:blur(2px)}100%{transform:none;opacity:1;filter:none}}
+
+/* equalizer next to the sound name */
+.eqz{display:inline-flex;gap:2px;align-items:flex-end;height:12px;flex:none}
+.eqz i{width:3px;height:4px;border-radius:2px;background:var(--sun)}
+.slide.live:not(.paused) .eqz i{animation:eq2 .8s ease-in-out infinite}
+.slide.live:not(.paused) .eqz i:nth-child(2){animation-delay:.2s;background:var(--mint)}
+.slide.live:not(.paused) .eqz i:nth-child(3){animation-delay:.4s;background:var(--heart)}
+@keyframes eq2{0%,100%{height:3px}50%{height:12px}}
+
+/* progress bar glow */
+.progress i{box-shadow:0 0 8px rgba(255,255,255,.7);transition:width .25s linear}
+
+/* liked heart breathes gently */
+.act.liked svg{animation:beat 2.4s ease-in-out 1s infinite}
+.act.liked.pop svg{animation:pop2 .5s var(--spring)}
+@keyframes beat{0%,100%{transform:scale(1)}8%{transform:scale(1.12)}16%{transform:scale(1)}24%{transform:scale(1.08)}32%{transform:scale(1)}}
+
+/* windows open as a circle growing from where you tapped */
+.page{--ox:85%;--oy:90%;touch-action:pan-y;animation:reveal .6s cubic-bezier(.65,0,.35,1)}
+.page.closing{animation:conceal .42s cubic-bezier(.65,0,.35,1) forwards}
+@keyframes reveal{from{clip-path:circle(0 at var(--ox) var(--oy))}to{clip-path:circle(150% at var(--ox) var(--oy))}}
+@keyframes conceal{from{clip-path:circle(150% at var(--ox) var(--oy))}to{clip-path:circle(0 at var(--ox) var(--oy))}}
+.page.dragging,.sheet.dragging{transition:none!important;animation:none}
+.page::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(var(--mint),var(--sun),var(--heart));opacity:0;transition:opacity .2s;z-index:2}
+.page.dragging::before{opacity:.9}
+.pbody>*>*{animation-duration:.6s}
+
+/* sheets: grab handle, drag down to close */
+.sheet header{touch-action:none;cursor:grab}
+.sheet .grab{position:absolute;top:6px;left:50%;width:38px;height:4px;margin-left:-19px;border-radius:2px;background:var(--line)}
+.sheet{animation:sheetup .5s cubic-bezier(.32,1.25,.5,1)}
+
+/* new comment glows in */
+.c.fresh{animation:fresh 1.4s var(--out) both}
+@keyframes fresh{0%{transform:translateY(-12px) scale(.96);opacity:0;background:rgba(255,201,60,.25)}25%{transform:none;opacity:1}100%{background:transparent}}
+.c{border-radius:10px;padding:4px;margin:-4px}
+
+/* pull to refresh */
+.ptr{position:absolute;left:50%;top:calc(10px + env(safe-area-inset-top,0px));z-index:7;opacity:0;transform:translate(-50%,-50px);pointer-events:none;width:46px;height:46px;border-radius:50%;background:var(--panel);display:grid;place-items:center;box-shadow:0 6px 20px rgba(0,0,0,.4);transition:opacity .2s}
+.ptr span{font-family:var(--display);font-weight:700;font-size:10px;color:var(--sun)}
+.ptr.armed{box-shadow:0 0 0 3px var(--sun),0 6px 20px rgba(0,0,0,.4)}
+.ptr.spin{opacity:1!important;transition:transform .3s var(--out)}
+.ptr.spin span{animation:spin .8s linear infinite;display:inline-block}
+
+/* confetti layer */
+.confetti{position:absolute;inset:0;width:100%;height:100%;z-index:25;pointer-events:none}
+
+/* plus button idles with a soft shimmer */
+.plus{position:relative;overflow:hidden}
+.plus::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 35%,rgba(255,255,255,.55) 50%,transparent 65%);transform:translateX(-120%);animation:sweep 4s ease-in-out 2s infinite}
+@keyframes sweep{0%,70%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
+
+/* avatar ring pulses on the active slide */
+.slide.live .avatar::before{content:"";position:absolute;inset:-6px;border-radius:50%;border:2px solid var(--sun);opacity:0;animation:halo 2.6s ease-out .8s infinite}
+@keyframes halo{0%{transform:scale(.85);opacity:.9}100%{transform:scale(1.35);opacity:0}}
+
+@media (prefers-reduced-motion:reduce){
+  .slide{transform:none!important;filter:none!important;border-radius:0!important}
+  .slide .info,.slide .rail{transform:none!important;opacity:1!important}
+  .page{animation:none!important}
+}

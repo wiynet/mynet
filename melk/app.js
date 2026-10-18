@@ -124,6 +124,80 @@ function openAuth(why, mode = 'in') {
 }
 async function onAuthChanged() { await loadMe(); await loadMyLikes(F.posts.map(p => p.id)); if (F.tab === 'follow') await reloadFeed(); else refreshSlides(); }
 
+/* ---------- motion ---------- */
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let lastPoint = null;
+document.addEventListener('pointerdown', e => { lastPoint = { x: e.clientX, y: e.clientY, t: Date.now() }; }, true);
+function originIn(el) { const r = el.getBoundingClientRect(); if (lastPoint && Date.now() - lastPoint.t < 800) return { x: lastPoint.x - r.left, y: lastPoint.y - r.top }; return { x: r.width - 40, y: r.height - 32 }; }
+
+// card-stack depth while swiping the feed
+let depthRaf = 0;
+feed.addEventListener('scroll', () => { if (!RM && !depthRaf) depthRaf = requestAnimationFrame(depth); }, { passive: true });
+function depth() {
+  depthRaf = 0; const h = feed.clientHeight || 1, top = feed.scrollTop, i0 = Math.floor(top / h);
+  for (let i = Math.max(0, i0 - 1); i <= i0 + 2; i++) {
+    const el = feed.children[i]; if (!el || !el.classList.contains('slide')) continue;
+    const p = (el.offsetTop - top) / h, a = Math.min(1, Math.max(0, -p)), b = Math.min(1, Math.max(0, p));
+    el.style.setProperty('--a', a.toFixed(4)); el.style.setProperty('--b', b.toFixed(4));
+  }
+}
+
+// confetti for big moments
+function confetti() {
+  if (RM) return;
+  const c = document.createElement('canvas'); c.className = 'confetti'; app.appendChild(c);
+  const r = app.getBoundingClientRect(), dpr = Math.min(devicePixelRatio || 1, 2); c.width = r.width * dpr; c.height = r.height * dpr;
+  const g = c.getContext('2d'); g.scale(dpr, dpr);
+  const cols = ['#ffc93c', '#5fe3c0', '#ff4f6d', '#f3f1ea'];
+  const ps = Array.from({ length: 140 }, () => ({ x: r.width / 2, y: r.height * .55, vx: (Math.random() - .5) * 14, vy: -8 - Math.random() * 12, w: 5 + Math.random() * 6, h: 8 + Math.random() * 8, rot: Math.random() * 6, vr: (Math.random() - .5) * .4, c: cols[Math.random() * 4 | 0] }));
+  const t0 = performance.now();
+  (function frame(now) {
+    const t = now - t0; g.clearRect(0, 0, r.width, r.height);
+    for (const p of ps) { p.vy += .35; p.vx *= .985; p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+      g.save(); g.translate(p.x, p.y); g.rotate(p.rot); g.globalAlpha = Math.max(0, 1 - t / 1800); g.fillStyle = p.c; g.fillRect(-p.w / 2, -p.h / 2, p.w, p.h * Math.abs(Math.cos(p.rot * 2))); g.restore(); }
+    if (t < 1800) requestAnimationFrame(frame); else c.remove();
+  })(t0);
+}
+
+// drag a sheet down / a window right to dismiss
+function draggable(el, handle, axis, onClose, scrim) {
+  let st = null, d = 0, v = 0, lt = 0;
+  handle.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    if (axis === 'x' && e.clientX - el.getBoundingClientRect().left > 36) return;
+    if (axis === 'y' && e.target.closest('button,input,textarea,a,label')) return;
+    st = { x: e.clientX, y: e.clientY }; d = 0; v = 0; lt = performance.now();
+  });
+  handle.addEventListener('pointermove', e => {
+    if (!st) return;
+    const raw = axis === 'y' ? e.clientY - st.y : e.clientX - st.x;
+    if (!el.classList.contains('dragging')) { if (raw < 6) return; el.classList.add('dragging'); try { handle.setPointerCapture(e.pointerId); } catch (_) { } }
+    const now = performance.now(), nd = Math.max(0, raw); v = (nd - d) / Math.max(1, now - lt); d = nd; lt = now;
+    el.style.transform = axis === 'y' ? `translateY(${d}px)` : `translateX(${d}px)`;
+    if (scrim) scrim.style.opacity = String(1 - Math.min(1, d / 400));
+  });
+  const up = () => {
+    if (!st) return; st = null; if (!el.classList.contains('dragging')) return;
+    el.classList.remove('dragging'); const size = axis === 'y' ? el.offsetHeight : el.offsetWidth;
+    if (d > size * .28 || v > .55) { el.dataset.dragged = '1'; el.style.transition = 'transform .24s cubic-bezier(.4,0,1,1)'; el.style.transform = axis === 'y' ? 'translateY(100%)' : 'translateX(100%)'; if (scrim) { scrim.style.transition = 'opacity .24s'; scrim.style.opacity = '0'; } setTimeout(onClose, 200); }
+    else { el.style.transition = 'transform .5s cubic-bezier(.34,1.56,.64,1)'; el.style.transform = ''; if (scrim) { scrim.style.transition = 'opacity .3s'; scrim.style.opacity = ''; } setTimeout(() => { el.style.transition = ''; if (scrim) scrim.style.transition = ''; }, 500); }
+  };
+  handle.addEventListener('pointerup', up); handle.addEventListener('pointercancel', up);
+}
+
+// pull down at the top of the feed to refresh
+(() => {
+  const ind = document.createElement('div'); ind.className = 'ptr'; ind.innerHTML = '<span>мельк</span>'; app.appendChild(ind);
+  let y0 = null, dy = 0;
+  feed.addEventListener('touchstart', e => { y0 = feed.scrollTop <= 0 && !sheetEls.length && !pageEl ? e.touches[0].clientY : null; dy = 0; }, { passive: true });
+  feed.addEventListener('touchmove', e => { if (y0 === null) return; dy = Math.max(0, e.touches[0].clientY - y0); const k = Math.min(1, dy / 110); ind.style.transform = `translate(-50%, ${k * 90 - 50}px) rotate(${k * 200}deg) scale(${.6 + k * .4})`; ind.style.opacity = String(k); ind.classList.toggle('armed', k >= 1); }, { passive: true });
+  feed.addEventListener('touchend', async () => {
+    if (y0 === null) return; y0 = null;
+    if (dy >= 110) { ind.classList.add('spin'); ind.style.transform = 'translate(-50%, 40px)'; await reloadFeed(); toast('Лента обновлена'); }
+    ind.classList.remove('spin', 'armed'); ind.style.transform = ''; ind.style.opacity = '0';
+  });
+})();
+
 /* ---------- feed ---------- */
 let io;
 async function fetchPosts(from) {
@@ -148,6 +222,7 @@ async function reloadFeed(focusId) {
   if (!F.posts.length) return renderEmpty();
   io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) activate(e.target); }), { root: feed, threshold: .6 });
   F.posts.forEach(appendSlide);
+  depth();
 }
 function renderEmpty() {
   const follow = F.tab === 'follow';
@@ -183,7 +258,7 @@ function slide(p) {
     <div class="disc"><span style="background:${color(p.author_id)}"></span></div>
   </div>
   <div class="info"><button class="handle"></button><div class="cap">${capHTML(p.caption)}</div>
-    <div class="sound">${ICON.note}<b>${esc(p.sound)} · ${esc(p.sound)}</b></div><div class="when">${ago(p.created_at)}</div></div>
+    <div class="sound"><span class="eqz"><i></i><i></i><i></i></span><b>${esc(p.sound)} · ${esc(p.sound)}</b></div><div class="when">${ago(p.created_at)}</div></div>
   <div class="progress"><i></i></div>`;
   el.querySelector('.handle').textContent = '@' + (p.author?.username || 'user');
   const v = el.querySelector('video');
@@ -207,14 +282,18 @@ function slide(p) {
   return el;
 }
 function fillSlide(el, p) {
-  const lk = el.querySelector('.like'); lk.classList.toggle('liked', S.liked.has(p.id)); setCount(lk.querySelector('span'), fmt(p.likeCount));
-  setCount(el.querySelector('.cm span'), fmt(p.commentCount));
+  const lk = el.querySelector('.like'); lk.classList.toggle('liked', S.liked.has(p.id)); setCount(lk.querySelector('span'), fmt(p.likeCount), p.likeCount);
+  setCount(el.querySelector('.cm span'), fmt(p.commentCount), p.commentCount);
   const sv = el.querySelector('.sv'), saved = S.saved.has(p.id); sv.classList.toggle('saved', saved); sv.querySelector('span').textContent = saved ? 'В избранном' : 'Сохранить';
   const f = el.querySelector('.follow');
   if (S.user && p.author_id === S.user.id) { if (f) f.remove(); }
   else if (f) { const on = S.following.has(p.author_id); if (f.classList.contains('on') !== on) { f.classList.toggle('on', on); replay(f, 'morph'); } f.textContent = on ? '✓' : '+'; }
 }
-function setCount(span, t) { if (span.textContent !== t) { const first = span.textContent === ''; span.textContent = t; if (!first) replay(span, 'tick'); } }
+function setCount(span, t, n) {
+  if (span.textContent === t) return;
+  const first = span.textContent === '', old = span._n ?? n; span._n = n; span.textContent = t;
+  if (!first) { span.classList.remove('up', 'down'); span.classList.add(n >= old ? 'up' : 'down'); replay(span, 'tick'); }
+}
 function replay(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); const end = e => { if (e.target !== el) return; el.classList.remove(cls); el.removeEventListener('animationend', end); }; el.addEventListener('animationend', end); }
 function sparks(btn, colorVar) {
   const svg = btn.querySelector('svg'); if (!svg) return;
@@ -285,7 +364,18 @@ async function deletePost(p) {
 }
 
 /* ---------- tabs & nav ---------- */
-function setTab(t) { F.tab = t; $('tab-fy').setAttribute('aria-selected', t === 'fy'); $('tab-follow').setAttribute('aria-selected', t === 'follow'); closeAll(); reloadFeed(); }
+function setTab(t) {
+  const dir = t === 'fy' ? 1 : -1, changed = F.tab !== t;
+  F.tab = t; $('tab-fy').setAttribute('aria-selected', t === 'fy'); $('tab-follow').setAttribute('aria-selected', t === 'follow'); moveTabLine(); closeAll();
+  const run = reloadFeed();
+  if (changed && !RM) run.then(() => feed.animate([{ transform: `translateX(${dir * 28}%)`, opacity: 0, filter: 'blur(6px)' }, { transform: 'none', opacity: 1, filter: 'blur(0)' }], { duration: 480, easing: 'cubic-bezier(.22,1,.36,1)' }));
+}
+function moveTabLine() {
+  const line = document.querySelector('.tabline'), cur = document.querySelector('.top [aria-selected="true"]'); if (!line || !cur) return;
+  const nr = cur.parentElement.getBoundingClientRect(), r = cur.getBoundingClientRect();
+  line.style.width = (r.width * .45) + 'px'; line.style.transform = `translateX(${r.left - nr.left + r.width * .275}px)`;
+}
+addEventListener('resize', moveTabLine); document.fonts && document.fonts.ready.then(moveTabLine); setTimeout(moveTabLine, 0);
 $('tab-fy').onclick = () => setTab('fy');
 $('tab-follow').onclick = () => setTab('follow');
 $('nav-home').onclick = () => { closeAll(); if (F.tab !== 'fy') setTab('fy'); else feed.scrollTo({ top: 0, behavior: 'smooth' }); };
@@ -295,15 +385,17 @@ async function goToPost(id) { closeAll(); const s = feed.querySelector(`[data-id
 
 /* ---------- sheets ---------- */
 let sheetEls = [], pageEl = null, pagePushed = false;
-function closeSheet() { const els = sheetEls; sheetEls = []; els.forEach(x => { x.classList.add('closing'); setTimeout(() => x.remove(), 230); }); }
-function removePage() { if (!pageEl) return; const el = pageEl; pageEl = null; el.classList.add('closing'); setTimeout(() => el.remove(), 260); }
+function closeSheet() { const els = sheetEls; sheetEls = []; els.forEach(x => { if (x.dataset.dragged) { x.remove(); return; } x.classList.add('closing'); setTimeout(() => x.remove(), 260); }); }
+function removePage() { if (!pageEl) return; const el = pageEl; pageEl = null; if (el.dataset.dragged) { el.remove(); return; } el.classList.add('closing'); setTimeout(() => el.remove(), 420); }
 function closePage() { if (!pageEl) return; if (pagePushed) { pagePushed = false; history.back(); } removePage(); }
 function closeAll() { closeSheet(); closePage(); }
 addEventListener('popstate', () => { pagePushed = false; removePage(); });
 /* full-screen window with a back button (login, profile) */
 function page(title, body, hash) {
   closeSheet();
-  if (!pageEl) { pageEl = document.createElement('div'); pageEl.className = 'page'; pageEl.setAttribute('role', 'dialog'); app.appendChild(pageEl);
+  if (!pageEl) { pageEl = document.createElement('div'); pageEl.className = 'page'; pageEl.setAttribute('role', 'dialog');
+    const o = originIn(app); pageEl.style.setProperty('--ox', o.x + 'px'); pageEl.style.setProperty('--oy', o.y + 'px');
+    app.appendChild(pageEl); draggable(pageEl, pageEl, 'x', closePage);
     if (!pagePushed) { history.pushState({ melkPage: 1 }, '', hash || location.pathname + location.search); pagePushed = true; } }
   else if (hash) history.replaceState({ melkPage: 1 }, '', hash);
   pageEl.innerHTML = '<header class="phead"><button class="back" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button><span class="ttl"></span><span class="pad"></span></header>';
@@ -315,8 +407,10 @@ function pageHash(h) { if (pageEl && pagePushed) history.replaceState({ melkPage
 function sheet(title, body) {
   closeSheet(); const s = document.createElement('div'); s.className = 'scrim'; s.onclick = closeSheet;
   const sh = document.createElement('div'); sh.className = 'sheet'; sh.setAttribute('role', 'dialog');
-  sh.innerHTML = '<header><span class="ttl"></span><button class="x" aria-label="Закрыть">×</button></header>'; sh.querySelector('.ttl').textContent = title; sh.appendChild(body);
-  sh.querySelector('.x').onclick = closeSheet; app.append(s, sh); sheetEls = [s, sh]; return sh;
+  sh.innerHTML = '<header><i class="grab"></i><span class="ttl"></span><button class="x" aria-label="Закрыть">×</button></header>'; sh.querySelector('.ttl').textContent = title; sh.appendChild(body);
+  sh.querySelector('.x').onclick = closeSheet; app.append(s, sh); sheetEls = [s, sh];
+  draggable(sh, sh.querySelector('header'), 'y', () => { s.dataset.dragged = sh.dataset.dragged = '1'; closeSheet(); }, s);
+  return sh;
 }
 
 async function openComments(p) {
@@ -352,7 +446,7 @@ async function openComments(p) {
     btn.disabled = true;
     const { data: row, error } = await sb.from('melk_comments').insert({ post_id: p.id, author_id: S.user.id, body: t }).select('id,body,created_at,author_id,author:melk_profiles!melk_comments_author_id_fkey(username,name)').single();
     if (error) { btn.disabled = false; return dbErr(error); }
-    inp.value = ''; items.unshift(row); p.commentCount++; refreshSlides(); draw(); list.scrollTop = 0;
+    inp.value = ''; items.unshift(row); p.commentCount++; refreshSlides(); draw(); list.scrollTop = 0; list.firstElementChild?.classList.add('fresh');
   };
 }
 
@@ -391,7 +485,7 @@ function openUpload() {
     }).select('id').single();
     if (error) { await sb.storage.from(BUCKET).remove([path]); go.disabled = false; go.classList.remove('loading'); go.textContent = 'Опубликовать'; return fail('Не получилось опубликовать. Попробуйте ещё раз.'); }
     if (preview) URL.revokeObjectURL(preview);
-    closeSheet(); await goToPost(data.id); toast('Опубликовано');
+    closeSheet(); await goToPost(data.id); confetti(); toast('Опубликовано');
   };
 }
 
