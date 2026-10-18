@@ -68,7 +68,8 @@ function needLogin(why) { if (S.user && S.me) return false; openAuth(why); retur
 function openAuth(why, mode = 'in') {
   const body = document.createElement('div'); body.className = 'form';
   body.innerHTML = `
-    ${why ? `<p class="hint" style="text-align:center">${esc(why)}</p>` : ''}
+    <div class="hero"><div class="logo">мельк</div><p>Короткие видео от людей вокруг тебя</p></div>
+    ${why ? `<p class="why">${esc(why)}</p>` : ''}
     <div class="seg" role="tablist"><button data-m="in">Вход</button><button data-m="up">Регистрация</button></div>
     <form id="auth-form" class="form" style="padding:0" novalidate>
       <div class="field"><label for="a-user" id="a-user-l">Ник</label><input type="text" id="a-user" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="80"></div>
@@ -78,7 +79,7 @@ function openAuth(why, mode = 'in') {
       <button class="primary" id="a-go" type="submit">Войти</button>
       <p class="hint" id="a-hint"></p>
     </form>`;
-  sheet('Аккаунт', body);
+  page('Аккаунт', body, '#login');
   const form = body.querySelector('#auth-form'), err = body.querySelector('#a-err'), go = body.querySelector('#a-go');
   const set = m => {
     mode = m; body.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-selected', b.dataset.m === m));
@@ -112,7 +113,7 @@ function openAuth(why, mode = 'in') {
       if (error) return fail(/registered|exists/i.test(error.message) ? 'Этот ник уже занят.' : /password/i.test(error.message) ? 'Пароль слишком простой. Придумайте другой.' : 'Не получилось зарегистрироваться: ' + error.message);
       if (!data.session) return fail('Регистрация пока выключена: в Supabase включено подтверждение почты. Администратору нужно его отключить.');
     }
-    closeSheet(); await onAuthChanged(); toast(mode === 'in' ? 'Вы вошли' : 'Добро пожаловать в «Мельк»!');
+    closePage(); await onAuthChanged(); toast(mode === 'in' ? 'Вы вошли' : 'Добро пожаловать в «Мельк»!');
   };
 }
 async function onAuthChanged() { await loadMe(); await loadMyLikes(F.posts.map(p => p.id)); if (F.tab === 'follow') await reloadFeed(); else refreshSlides(); }
@@ -261,17 +262,33 @@ async function deletePost(p) {
 }
 
 /* ---------- tabs & nav ---------- */
-function setTab(t) { F.tab = t; $('tab-fy').setAttribute('aria-selected', t === 'fy'); $('tab-follow').setAttribute('aria-selected', t === 'follow'); closeSheet(); reloadFeed(); }
+function setTab(t) { F.tab = t; $('tab-fy').setAttribute('aria-selected', t === 'fy'); $('tab-follow').setAttribute('aria-selected', t === 'follow'); closeAll(); reloadFeed(); }
 $('tab-fy').onclick = () => setTab('fy');
 $('tab-follow').onclick = () => setTab('follow');
-$('nav-home').onclick = () => { closeSheet(); if (F.tab !== 'fy') setTab('fy'); else feed.scrollTo({ top: 0, behavior: 'smooth' }); };
+$('nav-home').onclick = () => { closeAll(); if (F.tab !== 'fy') setTab('fy'); else feed.scrollTo({ top: 0, behavior: 'smooth' }); };
 $('nav-up').onclick = () => openUpload();
 $('nav-me').onclick = () => { if (needLogin()) return; openProfile(S.user.id); };
-async function goToPost(id) { closeSheet(); const s = feed.querySelector(`[data-id="${id}"]`); if (s && F.tab === 'fy') { s.scrollIntoView(); return; } F.tab = 'fy'; $('tab-fy').setAttribute('aria-selected', true); $('tab-follow').setAttribute('aria-selected', false); await reloadFeed(id); }
+async function goToPost(id) { closeAll(); const s = feed.querySelector(`[data-id="${id}"]`); if (s && F.tab === 'fy') { s.scrollIntoView(); return; } F.tab = 'fy'; $('tab-fy').setAttribute('aria-selected', true); $('tab-follow').setAttribute('aria-selected', false); await reloadFeed(id); }
 
 /* ---------- sheets ---------- */
-let sheetEls = [];
+let sheetEls = [], pageEl = null, pagePushed = false;
 function closeSheet() { sheetEls.forEach(x => x.remove()); sheetEls = []; }
+function removePage() { if (pageEl) { pageEl.remove(); pageEl = null; } }
+function closePage() { if (!pageEl) return; if (pagePushed) { pagePushed = false; history.back(); } removePage(); }
+function closeAll() { closeSheet(); closePage(); }
+addEventListener('popstate', () => { pagePushed = false; removePage(); });
+/* full-screen window with a back button (login, profile) */
+function page(title, body, hash) {
+  closeSheet();
+  if (!pageEl) { pageEl = document.createElement('div'); pageEl.className = 'page'; pageEl.setAttribute('role', 'dialog'); app.appendChild(pageEl);
+    if (!pagePushed) { history.pushState({ melkPage: 1 }, '', hash || location.pathname + location.search); pagePushed = true; } }
+  else if (hash) history.replaceState({ melkPage: 1 }, '', hash);
+  pageEl.innerHTML = '<header class="phead"><button class="back" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button><span class="ttl"></span><span class="pad"></span></header>';
+  pageEl.querySelector('.ttl').textContent = title; pageEl.querySelector('.back').onclick = closePage;
+  const wrap = document.createElement('div'); wrap.className = 'pbody'; wrap.appendChild(body); pageEl.appendChild(wrap);
+  return pageEl;
+}
+function pageHash(h) { if (pageEl && pagePushed) history.replaceState({ melkPage: 1 }, '', h); }
 function sheet(title, body) {
   closeSheet(); const s = document.createElement('div'); s.className = 'scrim'; s.onclick = closeSheet;
   const sh = document.createElement('div'); sh.className = 'sheet'; sh.setAttribute('role', 'dialog');
@@ -360,7 +377,7 @@ async function openProfile(uid) {
   const body = document.createElement('div'); body.className = 'prof';
   body.innerHTML = '<p class="hint" style="padding:30px">Загружаем профиль…</p>';
   const me = S.user && uid === S.user.id;
-  sheet(me ? 'Мой профиль' : 'Профиль', body);
+  page(me ? 'Мой профиль' : 'Профиль', body);
   const [prof, posts, fers, fing] = await Promise.all([
     sb.from('melk_profiles').select('id,username,name,bio').eq('id', uid).maybeSingle(),
     sb.from('melk_posts').select(POST_SELECT).eq('author_id', uid).order('created_at', { ascending: false }).limit(60),
@@ -369,6 +386,7 @@ async function openProfile(uid) {
   ]);
   if (!prof.data) { body.innerHTML = '<p class="err" style="padding:30px">Профиль не найден.</p>'; return; }
   const P = prof.data, own = (posts.data || []).map(normPost);
+  pageHash('#@' + P.username); if (pageEl) pageEl.querySelector('.ttl').textContent = me ? 'Мой профиль' : '@' + P.username;
   let followerCount = fers.count || 0, tab = 'posts', editing = false, lists = { liked: null, saved: null };
   const likesGot = own.reduce((s, p) => s + p.likeCount, 0);
 
@@ -419,7 +437,7 @@ async function openProfile(uid) {
     if (me) {
       body.querySelectorAll('.ptabs button').forEach(b => { b.setAttribute('aria-selected', b.dataset.t === tab); b.onclick = () => { tab = b.dataset.t; draw(); }; });
       if (tab !== 'posts') { items = lists[tab]; if (!items) { loadList(tab); items = []; } }
-      body.querySelector('#pf-out').onclick = async () => { await sb.auth.signOut(); closeSheet(); await onAuthChanged(); toast('Вы вышли из аккаунта'); };
+      body.querySelector('#pf-out').onclick = async () => { await sb.auth.signOut(); closePage(); await onAuthChanged(); toast('Вы вышли из аккаунта'); };
     }
     const g = body.querySelector('.grid');
     if (!items.length) {
@@ -438,5 +456,6 @@ async function openProfile(uid) {
   const m = location.hash.match(/^#p\/([0-9a-f-]{36})$/i);
   await reloadFeed(m ? m[1] : null);
   const u = location.hash.match(/^#@([a-z0-9_]{3,20})$/i);
-  if (u) { const { data } = await sb.from('melk_profiles').select('id').eq('username', u[1].toLowerCase()).maybeSingle(); if (data) openProfile(data.id); }
+  if (location.hash === '#login' && !S.user) { history.replaceState(null, '', location.pathname); openAuth(); }
+  if (u) { history.replaceState(null, '', location.pathname); const { data } = await sb.from('melk_profiles').select('id').eq('username', u[1].toLowerCase()).maybeSingle(); if (data) openProfile(data.id); }
 })();
