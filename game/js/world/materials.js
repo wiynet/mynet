@@ -94,6 +94,7 @@ export const Mats = {
   // Self-lit surfaces (lamp bulbs, screens, neon). Brightness animated at night.
   glow: () => m('glow', () => new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false })),
   lamp: () => m('lamp', () => new THREE.MeshStandardMaterial({ color: 0x222222, emissive: 0xffd9a0, emissiveIntensity: 0, vertexColors: true, roughness: 0.4 })),
+  lampIn: () => m('lampIn', () => new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff0d8, emissiveIntensity: 2.2, vertexColors: true, roughness: 0.4 })),
   neon: () => m('neon', () => new THREE.MeshStandardMaterial({ color: 0x111111, emissive: 0xffffff, emissiveIntensity: 2.5, vertexColors: true, roughness: 0.4 })),
   roof: () => m('roof', () => std({ map: Tex.sidewalk(), roughness: 0.95, vertexColors: true })),
   tileRoof: () => m('tileRoof', () => std({ roughness: 0.8, vertexColors: true, flatShading: true })),
@@ -119,7 +120,7 @@ export function storefrontMat(seed = 1) {
   if (facadeCache[k]) return facadeCache[k];
   const t = Tex.storefront(seed);
   const mt = new THREE.MeshStandardMaterial({ map: t.map, emissiveMap: t.emissive, emissive: 0xffffff, emissiveIntensity: 0.25, roughness: 0.2, metalness: 0.4, vertexColors: true });
-  nightMaterials.push({ mat: mt, base: 1.4, min: 0.25 });
+  nightMaterials.push({ mat: mt, base: 0.85, min: 0.2 });
   return (facadeCache[k] = mt);
 }
 const signCache = {};
@@ -128,6 +129,7 @@ export function signMat(text, opts = {}) {
   if (signCache[k]) return signCache[k];
   const t = Tex.sign(text, opts);
   const mt = new THREE.MeshStandardMaterial({ map: t, emissiveMap: t, emissive: 0xffffff, emissiveIntensity: opts.neon ? 1.2 : 0.3, roughness: 0.5 });
-  nightMaterials.push({ mat: mt, base: opts.neon ? 2.6 : 1.0, min: opts.neon ? 0.9 : 0.25, flicker: opts.neon && Math.random() < 0.15 });
+  const light = /^#(f|e|d)/i.test(opts.bg || '');
+  nightMaterials.push({ mat: mt, base: light ? 0.45 : opts.neon ? 2.4 : 0.9, min: light ? 0.12 : opts.neon ? 0.9 : 0.25, flicker: opts.neon && Math.random() < 0.15 });
   return (signCache[k] = mt);
 }

@@ -246,10 +246,10 @@ export const Tex = {
       const gx = i * 128 + 8, gy = 40;
       const g = x.createLinearGradient(gx, gy, gx, H);
       const hue = r() * 360;
-      g.addColorStop(0, `hsl(${hue},25%,55%)`); g.addColorStop(1, `hsl(${hue},20%,25%)`);
+      g.addColorStop(0, `hsl(${hue},16%,52%)`); g.addColorStop(1, `hsl(${hue},12%,22%)`);
       x.fillStyle = g; x.fillRect(gx, gy, 112, H - gy - 8);
       for (let k = 0; k < 6; k++) { x.fillStyle = `hsla(${r() * 360},50%,60%,0.6)`; x.fillRect(gx + 8 + r() * 80, gy + 60 + r() * 120, 10 + r() * 20, 10 + r() * 30); }
-      ex.fillStyle = `hsl(${hue},40%,70%)`; ex.globalAlpha = 0.7; ex.fillRect(gx, gy, 112, H - gy - 8);
+      ex.fillStyle = `hsl(${hue},22%,58%)`; ex.globalAlpha = 0.6; ex.fillRect(gx, gy, 112, H - gy - 8);
     }
     x.fillStyle = '#111'; x.fillRect(0, 0, W, 36);
     return { map: tex(c), emissive: tex(e) };

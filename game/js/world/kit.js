@@ -103,7 +103,7 @@ export const Furniture = {
   nightstand(k, x, z) {
     k.box(x, 0, z, 0.5, 0.5, 0.45, Mats.wood(), 0xa08060);
     k.cyl(x, 0.5, z, 0.08, 0.1, 0.25, Mats.plastic(), 0xeeeeee, { collide: false });
-    k.cyl(x, 0.75, z, 0.16, 0.2, 0.2, Mats.lamp(), 0xfff0d0, { collide: false });
+    k.cyl(x, 0.75, z, 0.16, 0.2, 0.2, Mats.lampIn(), 0xfff0d0, { collide: false });
   },
   wardrobe(k, w = 1.6, color = 0xf0ece4) {
     k.box(0, 0, 0, w, 2.2, 0.6, Mats.paint(), color);
@@ -145,11 +145,11 @@ export const Furniture = {
   floorLamp(k, x, z, world) {
     k.cyl(x, 0, z, 0.15, 0.18, 0.04, Mats.metal(), 0x222222);
     k.cyl(x, 0.04, z, 0.015, 0.015, 1.45, Mats.metal(), 0x222222);
-    k.cyl(x, 1.45, z, 0.18, 0.26, 0.3, Mats.lamp(), 0xfff0d8);
+    k.cyl(x, 1.45, z, 0.18, 0.26, 0.3, Mats.lampIn(), 0xfff0d8);
     if (world) world.addLightAnchor(k.point(x, 1.4, z), 0xffd8a8, 5, 7, true);
   },
   ceilingLamp(k, x, y, z, world, color = 0xfff2e0, intensity = 7, dist = 10) {
-    k.cyl(x, y - 0.12, z, 0.25, 0.25, 0.08, Mats.lamp(), 0xffffff, { cast: false });
+    k.cyl(x, y - 0.12, z, 0.25, 0.25, 0.08, Mats.lampIn(), 0xffffff, { cast: false });
     if (world) world.addLightAnchor(k.point(x, y - 0.3, z), color, intensity, dist, true);
   },
   rug(k, x, z, w, d) {

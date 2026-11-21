@@ -84,6 +84,11 @@ export class Pedestrians {
       for (let x = x0; x < x1; x += 7 + Math.random() * 10) this.loiterSpots.push({ x, z, heading: z > 0 ? (z > 270 ? 0 : Math.PI) : 0 });
     }
   }
+  /** True if a world point is behind the camera (safe to pop NPCs in). */
+  behind(x, z) {
+    const cam = this.world.game.camera, e = cam.matrixWorld.elements;
+    return (x - cam.position.x) * -e[8] + (z - cam.position.z) * -e[10] < -4;
+  }
   nearestNode(x, z) {
     let best = null, bd = Infinity;
     for (const n of this.graph) { const d = (n.x - x) ** 2 + (n.z - z) ** 2; if (d < bd) { bd = d; best = n; } }
@@ -102,13 +107,13 @@ export class Pedestrians {
       if (r < 0.14 && this.world.benches.length) {
         const b = this.world.benches[Math.floor(this.rng.next() * this.world.benches.length)];
         if (b.taken) continue;
-        const d = Math.hypot(b.x - focus.x, b.z - focus.z); if (d > 120 || (!near && d < 35)) continue;
+        const d = Math.hypot(b.x - focus.x, b.z - focus.z); if (d > 120 || d < 12 || (!near && d < 35 && !this.behind(b.x, b.z))) continue;
         const n = new NPC(this.world, null, { x: b.x, z: b.z, y: b.y || 0.15, heading: b.rot, state: 'sit' });
         n.bench = b; b.taken = true; n.timer = 20 + this.rng.next() * 40; return this.add(n);
       }
       if (r < 0.32) {
         const s = this.loiterSpots[Math.floor(this.rng.next() * this.loiterSpots.length)];
-        const d = Math.hypot(s.x - focus.x, s.z - focus.z); if (d > 120 || (!near && d < 35)) continue;
+        const d = Math.hypot(s.x - focus.x, s.z - focus.z); if (d > 120 || d < 12 || (!near && d < 35 && !this.behind(s.x, s.z))) continue;
         const n = new NPC(this.world, null, { x: s.x, z: s.z, heading: s.heading, state: 'idle' });
         n.idleKind = this.rng.pick(['phone', 'look', 'talk', 'talk', 'look']); n.timer = 10 + this.rng.next() * 30;
         this.add(n);
@@ -126,7 +131,7 @@ export class Pedestrians {
       const t = this.rng.next();
       const x = node.x + (to.x - node.x) * t, z = node.z + (to.z - node.z) * t;
       const d = Math.hypot(x - focus.x, z - focus.z);
-      if (d > 120 || (!near && d < 45)) continue;
+      if (d > 120 || d < 15 || (!near && d < 45 && !this.behind(x, z))) continue;
       const n = new NPC(this.world, null, { x, z, state: 'walk' });
       n.from = node; n.to = to; n.t = t;
       if (this.rng.next() < 0.1) { n.state = 'walk'; n.jogger = true; n.walkSpeed = 2.8; }

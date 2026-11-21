@@ -28,14 +28,14 @@ export const SaveSystem = {
 
 export const DEFAULT_SETTINGS = {
   preset: 'high', resScale: 1, shadows: 'high', reflections: 'half', bloom: true, aa: true, viewDistance: 1,
-  traffic: 26, peds: 34, sens: 1, invertY: false, fov: 62, shake: true,
+  traffic: 28, peds: 42, sens: 1, invertY: false, fov: 62, shake: true,
   master: 0.8, sfx: 0.9, music: 0.5, ambient: 0.7, timeScale: 1, hud: true, subtitles: true, weather: 'dynamic', fps: false,
 };
 export const PRESETS = {
   low: { resScale: 0.6, shadows: 'off', reflections: 'off', bloom: false, aa: false, viewDistance: 0.6, traffic: 14, peds: 18 },
   medium: { resScale: 0.8, shadows: 'low', reflections: 'off', bloom: true, aa: false, viewDistance: 0.8, traffic: 20, peds: 26 },
-  high: { resScale: 1, shadows: 'high', reflections: 'half', bloom: true, aa: true, viewDistance: 1, traffic: 26, peds: 34 },
-  ultra: { resScale: 1, shadows: 'ultra', reflections: 'full', bloom: true, aa: true, viewDistance: 1.4, traffic: 32, peds: 44 },
+  high: { resScale: 1, shadows: 'high', reflections: 'half', bloom: true, aa: true, viewDistance: 1, traffic: 28, peds: 42 },
+  ultra: { resScale: 1, shadows: 'ultra', reflections: 'full', bloom: true, aa: true, viewDistance: 1.4, traffic: 34, peds: 52 },
 };
 export function loadSettings() {
   const s = store();

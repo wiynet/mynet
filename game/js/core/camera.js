@@ -17,6 +17,8 @@ export class CameraRig {
   cycleDistance() { this.distIdx = (this.distIdx + 1) % 3; }
   /** Play a scripted shot: {from:Vector3, to:Vector3, look:Vector3, lookTo?, dur} */
   cinematic(shot) { this.cine = { ...shot, t: 0 }; }
+  /** Skip the current shot and any shots it chains into. */
+  skipCinematic() { let guard = 8; while (this.cine && guard--) { const c = this.cine; this.cine = null; if (c.done) c.done(); } }
 
   update(dt, input, player, time) {
     const cam = this.camera, col = this.world.collision;

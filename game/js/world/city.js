@@ -695,6 +695,19 @@ export class City {
     k.collider(-2, 0, -0.8, 2, 2.6, -0.6);
     const sp = k.point(-0.3, 0, -0.3);
     this.world.benches.push({ x: sp.x, z: sp.z, rot, taken: false });
+    this.vending(k.point(3.1, 0, -0.4), rot);
+  }
+  /** Street vending machine: an interactive object selling drinks. */
+  vending(p, rot) {
+    const k = this.kit.at(p.x, 0.15, p.z, rot);
+    k.box(0, 0, 0, 0.95, 1.9, 0.75, Mats.paint(), 0xc8262c);
+    k.box(-0.12, 0.6, 0.38, 0.6, 1.1, 0.02, Mats.glow(), 0xd8eeff, { collide: false });
+    k.box(0.33, 0.9, 0.38, 0.14, 0.3, 0.03, Mats.metal(), 0x222222, { collide: false });
+    const front = k.point(0, 1, 0.9);
+    this.world.addInteractable({
+      pos: front, radius: 1.5, label: 'Buy a soda ($3) — refills stamina',
+      action: () => { const g = this.world.game; if (!g.inventory.spend(3)) { g.hud.notify('Not enough cash.', 1.5); return; } g.player.stamina = 100; g.player.health = Math.min(100, g.player.health + 5); g.audio.cash(); g.hud.notify('Fizz! Stamina refilled.', 1.5); },
+    });
   }
   // ------------------------------------------------------------ Lantern Row
   buildLanternRow() {

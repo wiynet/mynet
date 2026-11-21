@@ -71,7 +71,9 @@ export class Traffic {
       const st = this.laneStart(i, j, dx, dz, lane);
       const x = st.x + dx * s, z = st.z + dz * s;
       const d = Math.hypot(x - focus.x, z - focus.z);
-      if (near ? d > 160 : (d < 80 || d > 210)) continue;
+      const cam = this.world.game.camera, e = cam.matrixWorld.elements;
+      const behind = (x - cam.position.x) * -e[8] + (z - cam.position.z) * -e[10] < -10;
+      if (near ? d > 160 : ((d < 80 && !(behind && d > 40)) || d > 210)) continue;
       if (this.cars.some((c) => Math.hypot(c.veh.pos.x - x, c.veh.pos.z - z) < 12)) continue;
       if (this.world.game.vehicles.some((v) => Math.hypot(v.pos.x - x, v.pos.z - z) < 8)) continue;
       const types = ['sedan', 'sedan', 'compact', 'compact', 'suv', 'taxi', 'van', 'sports', 'suv'];

@@ -415,6 +415,7 @@ export class Game {
     this.fpsN++; this.fpsT += dt;
     if (this.fpsT > 0.5) { document.getElementById('fps').textContent = Math.round(this.fpsN / this.fpsT) + ' FPS'; this.fpsN = 0; this.fpsT = 0; }
     if (document.body.dataset.mode !== this.mode) document.body.dataset.mode = this.mode;
+    document.getElementById('skipHint').classList.toggle('show', !!this.cam.cine);
     this.handleHotkeys();
     if (this.mode === 'title') this.updateTitle(dt);
     else if (!this.paused) this.update(dt);
@@ -437,7 +438,7 @@ export class Game {
       return;
     }
     if (ui.open) return;
-    if (this.cam.cine) return;
+    if (this.cam.cine) { if (I.pressedRaw('Enter') || I.pressedRaw('Space')) this.cam.skipCinematic(); return; }
     if (I.pressedRaw('KeyM')) ui.openPause('map');
     else if (I.pressedRaw('Tab') || I.pressedRaw('KeyI')) ui.openPause('inventory');
     else if (I.pressedRaw('KeyJ')) ui.openPause('missions');
