@@ -109,7 +109,7 @@ export class Pedestrians {
         if (!nb.length) continue;
         const b = nb[Math.floor(this.rng.next() * nb.length)];
         if (b.taken) continue;
-        const d = Math.hypot(b.x - focus.x, b.z - focus.z); if (d > 85 || d < 12 || (!near && d < 35 && !this.behind(b.x, b.z))) continue;
+        const d = Math.hypot(b.x - focus.x, b.z - focus.z); if (d > 85 || d < 10 || (!near && d < 22 && !this.behind(b.x, b.z))) continue;
         const n = new NPC(this.world, null, { x: b.x, z: b.z, y: b.y || 0.15, heading: b.rot, state: 'sit' });
         n.bench = b; b.taken = true; n.timer = 20 + this.rng.next() * 40; return this.add(n);
       }
@@ -117,7 +117,7 @@ export class Pedestrians {
         const ns = this.loiterSpots.filter((x) => Math.abs(x.x - focus.x) < 85 && Math.abs(x.z - focus.z) < 85);
         if (!ns.length) continue;
         const s = ns[Math.floor(this.rng.next() * ns.length)];
-        const d = Math.hypot(s.x - focus.x, s.z - focus.z); if (d > 85 || d < 12 || (!near && d < 35 && !this.behind(s.x, s.z))) continue;
+        const d = Math.hypot(s.x - focus.x, s.z - focus.z); if (d > 85 || d < 10 || (!near && d < 22 && !this.behind(s.x, s.z))) continue;
         const n = new NPC(this.world, null, { x: s.x, z: s.z, heading: s.heading, state: 'idle' });
         n.idleKind = this.rng.pick(['phone', 'look', 'talk', 'talk', 'look']); n.timer = 10 + this.rng.next() * 30;
         this.add(n);
@@ -138,7 +138,7 @@ export class Pedestrians {
       const t = this.rng.next();
       const x = node.x + (to.x - node.x) * t, z = node.z + (to.z - node.z) * t;
       const d = Math.hypot(x - focus.x, z - focus.z);
-      if (d > 85 || d < 15 || (!near && d < 45 && !this.behind(x, z))) continue;
+      if (d > 85 || d < 12 || (!near && d < 26 && !this.behind(x, z))) continue;
       const n = new NPC(this.world, null, { x, z, state: 'walk' });
       n.from = node; n.to = to; n.t = t;
       if (this.rng.next() < 0.1) { n.state = 'walk'; n.jogger = true; n.walkSpeed = 2.8; }
