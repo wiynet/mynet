@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Solara — Open City</title>
+<meta name="description" content="A third-person open-world action game that runs in the browser.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23111'/%3E%3Ccircle cx='32' cy='36' r='14' fill='%23ffb02e'/%3E%3Crect x='8' y='40' width='48' height='4' fill='%23111'/%3E%3Crect x='8' y='47' width='48' height='3' fill='%23ff5a7a'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js", "three/addons/": "./vendor/addons/" } }
+</script>
+</head>
+<body>
+<canvas id="view"></canvas>
+<div id="letterbox"><div></div><div></div></div>
+<div id="fade"></div>
+<div id="hurt"></div>
+<div id="bubbles"></div>
+
+<div id="hud" class="hidden-until-play">
+  <div id="mapwrap">
+    <canvas id="minimap" width="270" height="176"></canvas>
+    <div class="bars"><div class="bar hp"><i id="hpFill"></i></div><div class="bar st"><i id="stFill"></i></div></div>
+  </div>
+  <div id="topright">
+    <div id="clockrow"><span id="clock">--:--</span><span id="weather"></span></div>
+    <div id="money">$0</div>
+    <div id="moneyDelta"></div>
+    <div id="stars"></div>
+    <div id="weapon"></div>
+  </div>
+  <div id="tracker"><div id="trTitle"></div><div id="trObj"></div><div class="row"><span id="trDist"></span><span id="trTimer"></span></div></div>
+  <div id="notify"></div>
+  <div id="objective"></div>
+  <div id="subtitle"></div>
+  <div id="prompt"></div>
+  <div id="vehud">
+    <div class="vname" id="vname"></div>
+    <div class="speed"><b id="spd">0</b><span>km/h</span><em id="gear">N</em></div>
+    <div class="vbar"><i id="vhpFill"></i></div>
+    <div class="radio" id="radio"></div>
+  </div>
+  <div id="area"></div>
+  <div id="crosshair"><i></i></div>
+  <div id="fps"></div>
+</div>
+
+<div id="banner"></div>
+<div id="overlay"></div>
+<div id="introCard"><div class="it">SOLARA</div><div class="is">A new life on the coast</div></div>
+<div id="credits"><div class="ct">SOLARA</div><div class="cs">Thanks for playing the first chapter.</div><div class="cs dim">The city is yours — keep exploring, take side jobs, find every postcard.</div></div>
+<div id="clickToPlay">Click to resume</div>
+
+<div id="title">
+  <div class="tleft">
+    <div class="logo"><span>SOLARA</span><small>OPEN CITY</small></div>
+    <div id="titleMenu"></div>
+    <div class="tfoot">Third-person open-world action · WebGL · Best with mouse &amp; keyboard</div>
+  </div>
+  <div id="titleSub"></div>
+</div>
+
+<div id="pause">
+  <div class="phead">
+    <div class="plogo">SOLARA</div>
+    <nav>
+      <button data-tab="map">Map</button><button data-tab="missions">Missions</button><button data-tab="inventory">Inventory</button>
+      <button data-tab="character">Character</button><button data-tab="settings">Settings</button><button data-tab="game">Game</button>
+    </nav>
+    <div id="pauseStats"></div>
+    <button id="btnResume" class="sbtn primary">Resume ⏎</button>
+  </div>
+  <div class="pcontent">
+    <div class="tabpage" id="tab-map"><canvas id="fullmap"></canvas><div class="maphelp">Drag to pan · Wheel to zoom · Click to set waypoint · Right-click to clear</div>
+      <div class="legend"><span><b style="color:#ffb02e">★</b> Story</span><span><b style="color:#5ad8ff">$</b> Side job</span><span>⌂ Safehouse</span><span>🛒 QuikMart</span><span>👕 Clothes</span><span>🍜 Noodles</span><span>🔧 Garage</span><span style="color:#ff6b6b">✚ Clinic</span><span style="color:#6b9bff">⛨ Police</span></div></div>
+    <div class="tabpage" id="tab-missions"></div>
+    <div class="tabpage" id="tab-inventory"></div>
+    <div class="tabpage" id="tab-character"></div>
+    <div class="tabpage" id="tab-settings"></div>
+    <div class="tabpage" id="tab-game"></div>
+  </div>
+</div>
+<div id="shop"></div>
+<div id="wardrobe"></div>
+
+<div id="loading">
+  <div class="logo"><span>SOLARA</span><small>OPEN CITY</small></div>
+  <div class="lbar"><i id="loadBar"></i></div>
+  <div id="loadLabel">Starting…</div>
+</div>
+<noscript>This game needs JavaScript and WebGL 2.</noscript>
+<script>
+  // Surface load-time failures (e.g. a module that cannot be fetched) on the loading screen.
+  window.addEventListener('error', function (e) {
+    var l = document.getElementById('loading');
+    if (l && !l.classList.contains('done')) { l.classList.add('error'); document.getElementById('loadLabel').textContent = 'Could not start: ' + (e.message || 'script error') + '. Serve this folder over http:// (see README).'; }
+  });
+</script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
