@@ -239,7 +239,7 @@ export class Player {
     if (!v.police) v.engineOn = false;
     this.vehicle = null;
     if (v.sunk) { // swim to shore
-      this.position.z = Math.min(this.position.z, 325); this.position.y = this.world.collision.terrainHeight(this.position.x, this.position.z);
+      this.position.z = Math.min(this.position.z, 302); this.position.y = this.world.collision.terrainHeight(this.position.x, this.position.z) + 0.1;
     }
     if (spd > 9) {
       this.knockT = 1.2; this.vel.set(v.vel.x * 0.5, v.vel.y * 0.5);

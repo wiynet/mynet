@@ -36,6 +36,7 @@ export class Input {
       this.lastMouseMove = performance.now();
     });
     canvas.addEventListener('wheel', (e) => { this.wheel += Math.sign(e.deltaY); }, { passive: true });
+    document.addEventListener('pointerlockerror', () => { this.lockFails = (this.lockFails || 0) + 1; if (this.lockFails >= 2) this.wantsLock = false; });
     document.addEventListener('pointerlockchange', () => {
       this.locked = document.pointerLockElement === canvas;
       if (this.onLockChange) this.onLockChange(this.locked);

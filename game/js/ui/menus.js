@@ -200,7 +200,7 @@ export class UI {
       ${sel('reflections', 'Wet-street reflections', [['off', 'Off'], ['half', 'Half res'], ['full', 'Full']])}
       ${chk('bloom', 'Bloom / glow')}${chk('aa', 'Anti-aliasing (MSAA)')}
       ${rng('viewDistance', 'View distance', 0.5, 1.6, 0.1, (v) => Math.round(v * 100) + '%')}
-      ${rng('traffic', 'Traffic density', 0, 40, 1)}${rng('peds', 'Pedestrian density', 0, 60, 1)}
+      ${rng('traffic', 'Traffic density', 0, 40, 1)}${rng('peds', 'Pedestrian density', 0, 80, 1)}
       ${chk('fps', 'Show FPS')}
       </div><div><h4>Controls & camera</h4>
       ${rng('sens', 'Mouse sensitivity', 0.2, 3, 0.05, (v) => (+v).toFixed(2))}${chk('invertY', 'Invert Y axis')}

@@ -414,11 +414,11 @@ export class Missions {
     if (this.active || !g.inCity || g.player.vehicle) return;
     this.eventT -= dt;
     if (this.eventT > 0) return;
-    this.eventT = 150 + Math.random() * 180;
     // purse snatcher: pick a ped near the player
     const p = g.player.position;
-    const cands = g.peds.list.filter((n) => n.role === 'ped' && !n.knocked && n.state === 'walk' && Math.hypot(n.pos.x - p.x, n.pos.z - p.z) < 30 && Math.hypot(n.pos.x - p.x, n.pos.z - p.z) > 8);
-    if (cands.length < 2) return;
+    const cands = g.peds.list.filter((n) => n.role === 'ped' && !n.knocked && (n.state === 'walk' || n.state === 'idle') && Math.hypot(n.pos.x - p.x, n.pos.z - p.z) < 45 && Math.hypot(n.pos.x - p.x, n.pos.z - p.z) > 6);
+    if (cands.length < 2) { this.eventT = 20; return; }
+    this.eventT = 150 + Math.random() * 180;
     const victim = cands[0], thief = cands[1];
     thief.role = 'thief'; thief.persistent = true; thief.state = 'flee'; thief.timer = 999; thief.threat = p.clone(); thief.from = null; thief.tough = false; thief.health = 40;
     thief.onDefeat = () => { this.event.caught = true; };

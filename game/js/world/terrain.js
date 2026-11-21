@@ -23,7 +23,7 @@ export class Terrain {
     const pos = new Float32Array((nx + 1) * (nz + 1) * 3), col = new Float32Array((nx + 1) * (nz + 1) * 3), uv = new Float32Array((nx + 1) * (nz + 1) * 2);
     const heights = new Float32Array((nx + 1) * (nz + 1));
     const c = new THREE.Color();
-    const grass = new THREE.Color(0x5f7a3c), dry = new THREE.Color(0xa89a62), rock = new THREE.Color(0x8a8378), sand = new THREE.Color(0xe0cfa4), wetSand = new THREE.Color(0xb09a72);
+    const grass = new THREE.Color(0x5f7a3c), dry = new THREE.Color(0xa89a62), rock = new THREE.Color(0x707257), sand = new THREE.Color(0xe0cfa4), wetSand = new THREE.Color(0xb09a72);
     for (let j = 0; j <= nz; j++) for (let i = 0; i <= nx; i++) {
       const x = minX + i * STEP, z = minZ + j * STEP, k = j * (nx + 1) + i;
       const h = terrainHeight(x, z);

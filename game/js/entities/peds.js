@@ -105,15 +105,19 @@ export class Pedestrians {
     for (let tries = 0; tries < 10; tries++) {
       const r = this.rng.next();
       if (r < 0.14 && this.world.benches.length) {
-        const b = this.world.benches[Math.floor(this.rng.next() * this.world.benches.length)];
+        const nb = this.world.benches.filter((x) => !x.taken && Math.abs(x.x - focus.x) < 85 && Math.abs(x.z - focus.z) < 85);
+        if (!nb.length) continue;
+        const b = nb[Math.floor(this.rng.next() * nb.length)];
         if (b.taken) continue;
-        const d = Math.hypot(b.x - focus.x, b.z - focus.z); if (d > 120 || d < 12 || (!near && d < 35 && !this.behind(b.x, b.z))) continue;
+        const d = Math.hypot(b.x - focus.x, b.z - focus.z); if (d > 85 || d < 12 || (!near && d < 35 && !this.behind(b.x, b.z))) continue;
         const n = new NPC(this.world, null, { x: b.x, z: b.z, y: b.y || 0.15, heading: b.rot, state: 'sit' });
         n.bench = b; b.taken = true; n.timer = 20 + this.rng.next() * 40; return this.add(n);
       }
       if (r < 0.32) {
-        const s = this.loiterSpots[Math.floor(this.rng.next() * this.loiterSpots.length)];
-        const d = Math.hypot(s.x - focus.x, s.z - focus.z); if (d > 120 || d < 12 || (!near && d < 35 && !this.behind(s.x, s.z))) continue;
+        const ns = this.loiterSpots.filter((x) => Math.abs(x.x - focus.x) < 85 && Math.abs(x.z - focus.z) < 85);
+        if (!ns.length) continue;
+        const s = ns[Math.floor(this.rng.next() * ns.length)];
+        const d = Math.hypot(s.x - focus.x, s.z - focus.z); if (d > 85 || d < 12 || (!near && d < 35 && !this.behind(s.x, s.z))) continue;
         const n = new NPC(this.world, null, { x: s.x, z: s.z, heading: s.heading, state: 'idle' });
         n.idleKind = this.rng.pick(['phone', 'look', 'talk', 'talk', 'look']); n.timer = 10 + this.rng.next() * 30;
         this.add(n);
@@ -125,13 +129,16 @@ export class Pedestrians {
         }
         return n;
       }
-      const node = this.graph[Math.floor(this.rng.next() * this.graph.length)];
+      const nearNodes = this._nearNodes && this._nearKey === Math.round(focus.x / 20) + ',' + Math.round(focus.z / 20) ? this._nearNodes
+        : (this._nearKey = Math.round(focus.x / 20) + ',' + Math.round(focus.z / 20), this._nearNodes = this.graph.filter((n) => Math.hypot(n.x - focus.x, n.z - focus.z) < 110));
+      if (!nearNodes.length) return null;
+      const node = nearNodes[Math.floor(this.rng.next() * nearNodes.length)];
       const e = node.edges.filter((x) => x.cross < 0); if (!e.length) continue;
       const to = this.graph[e[Math.floor(this.rng.next() * e.length)].to];
       const t = this.rng.next();
       const x = node.x + (to.x - node.x) * t, z = node.z + (to.z - node.z) * t;
       const d = Math.hypot(x - focus.x, z - focus.z);
-      if (d > 120 || d < 15 || (!near && d < 45 && !this.behind(x, z))) continue;
+      if (d > 85 || d < 15 || (!near && d < 45 && !this.behind(x, z))) continue;
       const n = new NPC(this.world, null, { x, z, state: 'walk' });
       n.from = node; n.to = to; n.t = t;
       if (this.rng.next() < 0.1) { n.state = 'walk'; n.jogger = true; n.walkSpeed = 2.8; }
@@ -147,11 +154,11 @@ export class Pedestrians {
       this.spawnTimer = 0.35;
       const count = this.list.filter((n) => n.role === 'ped').length;
       const target = Math.round(this.density * (g.inCity ? 1 : 0.15) * (this.world.env.cur.rain > 0.5 ? 0.6 : 1) * (this.world.env.nightF > 0.5 ? 0.7 : 1));
-      if (count < target) this.spawnPed(focus, g.time < 3 || count < target * 0.5);
+      if (count < target) { this.spawnPed(focus, g.time < 3 || count < target * 0.5); if (count < target * 0.7) this.spawnPed(focus, g.time < 3); }
       for (const n of [...this.list]) {
         if (n.role !== 'ped' || n.persistent) continue;
         const d = Math.hypot(n.pos.x - focus.x, n.pos.z - focus.z);
-        if (d > 150 || (count > target + 5 && d > 90)) { if (n.bench) n.bench.taken = false; this.removeNPC(n); }
+        if (d > 115 || (count > target + 5 && d > 80)) { if (n.bench) n.bench.taken = false; this.removeNPC(n); }
       }
     }
     for (const n of this.list) this.updateNPC(n, dt, focus);
